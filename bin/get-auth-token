@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# Wrapper script to retrieve a user-specified oauth2 Google token to be used
+# with RoseAPI
+#
+# (c) Asuman Suenbuel, 2019
+#
+
+binary=$(dirname $0)/$(readlink $0)
+bindir=$(dirname ${binary})
+
+jsfile=${bindir}/../get-auth-token.js
+#/usr/bin/env node 
+
+/usr/bin/env node ${jsfile} $*
