@@ -56,6 +56,22 @@ class RoseAPI {
 	const cb = (typeof callback === 'function') ? callback : (() => {})
 	requestObject.url = url;
 	requestObject.auth = auth;
+	const jsonResult = body => {
+	    if (typeof body === 'object') {
+		return cb(null, body);
+	    }
+	    try {
+		cb(null, JSON.parse(body));
+	    } catch(err) {
+		cb(err);
+	    }
+	}
+	const checkResult = res => {
+	    if (res.statusCode === 200) {
+		return jsonResult(res.body);
+	    }
+	    cb(res.body);
+	}
 	request(requestObject, (err, res) => {
 	    if (err) {
 		return cb(err);
@@ -70,14 +86,14 @@ class RoseAPI {
 			    if (err) {
 				return cb(err);
 			    }
-			    cb(null, res.body);
+			    checkResult(res);
 			})
 		    })
 		    .catch(err => {
 			cb(err);
 		    })
 	    } else {
-		cb(null, res.body);
+		checkResult(res)
 	    }
 	});
     }
@@ -85,6 +101,37 @@ class RoseAPI {
     api_getUser(callback) {
 	this._apiCall('user', {}, callback);
     }
+
+    api_getEntities(entityName, callback) {
+	this._apiCall(`rest/${entityName}`, {}, callback);
+    }
+
+    api_getEntity(entityName, uuid, callback) {
+	this._apiCall(`rest/${entityName}/${uuid}`, {}, callback);
+    }
+
+    api_getBackendSystems(callback) {
+	this.api_getEntities('backend_systems', callback);
+    }
+
+    api_getRobots(callback) {
+	this.api_getEntities('robots', callback);
+    }
+
+    api_getConnections(callback) {
+	this.api_getEntities('connections', callback);
+    }
+
+    api_getConnectionClasses(callback) {
+	const cb = (typeof callback === 'function') ? callback : (() => {})
+	this.api_getConnections((err, connections) => {
+	    if (err) {
+		return cb(err);
+	    }
+	    cb(null, connections.filter(conn => !conn.CLASS_UUID));
+	});
+    }
+
 }
 
 
