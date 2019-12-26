@@ -9,6 +9,8 @@ const request = require('request');
 
 const { Server, Auth } = require('./config');
 
+const RoseJsonDecorator = '%JSN';
+
 class RoseAPI {
     
     constructor(tokens, apiUrl = Server.ApiUrl) {
@@ -56,12 +58,60 @@ class RoseAPI {
 	const cb = (typeof callback === 'function') ? callback : (() => {})
 	requestObject.url = url;
 	requestObject.auth = auth;
+	// if the requestObject has a json field, check whether any of the fields in there
+	// have a JSON object as value. In that case, add the %JSN suffix to field name
+	// and stringify the object value
+	const stringifyJsonFields = () => {
+	    const json = requestObject.json
+	    if (typeof json !== 'object') {
+		return
+	    }
+	    const keys = Object.keys(json);
+	    keys.forEach(key => {
+		const value = json[key];
+		if (typeof value === 'object') {
+		    const newValue = JSON.stringify(value, null, 2);
+		    const newKey = `${key}${RoseJsonDecorator}`;
+		    delete json[key];
+		    json[newKey] = newValue;
+		}
+	    })
+	};
+	// checks for fields with the %JSN suffix and
+	// - removes the %JSN suffix from the field name, and
+	// - parses the value into a json object
+	const _parseJsonFields = obj => {
+	    const keys = Object.keys(obj);
+	    keys.forEach(key => {
+		if (key.endsWith(RoseJsonDecorator)) {
+		    const newKey = key.substr(0, key.length - RoseJsonDecorator.length);
+		    try {
+			const valueStr = obj[key];
+			const valueObj = JSON.parse(valueStr);
+			delete obj[key];
+			obj[newKey] = valueObj;
+		    } catch (err) {
+			//console.error(`problem while trying to parse JSON field "${key}": ${err}`);
+			obj[newKey] = null;
+		    }
+		}
+	    });
+	    return obj;
+	}
+	const parseJsonFields = objOrArray => {
+	    if (Array.isArray(objOrArray)) {
+		objOrArray.forEach(_parseJsonFields);
+	    } else {
+		_parseJsonFields(objOrArray);
+	    }
+	    return objOrArray;
+	}
 	const jsonResult = body => {
 	    if (typeof body === 'object') {
-		return cb(null, body);
+		return cb(null, parseJsonFields(body));
 	    }
 	    try {
-		cb(null, JSON.parse(body));
+		cb(null, parseJsonFields(JSON.parse(body)));
 	    } catch(err) {
 		cb(err);
 	    }
@@ -72,6 +122,8 @@ class RoseAPI {
 	    }
 	    cb(res.body);
 	}
+	
+	stringifyJsonFields();
 	request(requestObject, (err, res) => {
 	    if (err) {
 		return cb(err);
@@ -123,13 +175,22 @@ class RoseAPI {
     }
 
     api_getConnectionClasses(callback) {
-	const cb = (typeof callback === 'function') ? callback : (() => {})
+	const cb = (typeof callback === 'function') ? callback : (() => {});
 	this.api_getConnections((err, connections) => {
 	    if (err) {
 		return cb(err);
 	    }
 	    cb(null, connections.filter(conn => !conn.CLASS_UUID));
 	});
+    }
+
+    api_updateEntity(entityName, uuid, obj, callback) {
+	const url = `rest/${entityName}/${uuid}`;
+	const requestObj = {
+	    method: 'PUT',
+	    json: obj
+	};
+	this._apiCall(url, requestObj, callback);
     }
 
 }
