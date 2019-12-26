@@ -1,2 +1,3 @@
-# rose-api-nodejs-client
-Rose API for nodejs clients
+# Rose API for NodeJS
+
+This package provides the API client for RoseStudio, a meta-programming environment focussing on Robotics applications.
