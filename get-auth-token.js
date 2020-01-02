@@ -15,7 +15,8 @@ const destroyer = require('server-destroy');
 const { writeFileSync } = require('fs');
 
 const port = 6001
-const scope = 'https://www.googleapis.com/auth/userinfo.profile'
+const scopes = ['https://www.googleapis.com/auth/userinfo.profile',
+		'https://www.googleapis.com/auth/userinfo.email']
 
 /**
  * main function
@@ -63,7 +64,7 @@ async function getAuthenticatedClient() {
     // Generate the url that will be used for the consent dialog.
     const authorizeUrl = oAuth2Client.generateAuthUrl({
 	access_type: 'offline',
-	scope: scope,
+	scope: scopes,
 	// When using `generateCodeVerifier`, make sure to use code_challenge_method 'S256'.
 	code_challenge_method: 'S256',
 	// Pass along the generated code challenge.

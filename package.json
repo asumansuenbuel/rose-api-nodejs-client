@@ -4,6 +4,7 @@
   "description": "Rose nodejs API",
   "main": "index.js",
   "scripts": {
+    "jsdoc": "./node_modules/.bin/jsdoc -c jsdocConf.json",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -30,5 +31,8 @@
   "bugs": {
     "url": "https://github.com/asumansuenbuel/rose-api-nodejs-client/issues"
   },
-  "homepage": "https://github.com/asumansuenbuel/rose-api-nodejs-client#readme"
+  "homepage": "https://github.com/asumansuenbuel/rose-api-nodejs-client#readme",
+  "devDependencies": {
+    "jsdoc": "^3.6.3"
+  }
 }
