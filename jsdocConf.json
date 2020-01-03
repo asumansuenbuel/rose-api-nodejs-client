@@ -1,0 +1,9 @@
+{
+    "sourceType": "module",
+    "source": {
+	"include": "index.js"
+    },
+    "opts": {
+	"sort": false
+    }
+}

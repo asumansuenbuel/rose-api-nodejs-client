@@ -22,6 +22,7 @@ const { OAuth2Client } = require('google-auth-library');
 const request = require('request');
 
 const { Server, Auth } = require('./config');
+const ZipFile = require('./create-zip');
 
 const RoseJsonDecorator = '%JSN';
 
@@ -39,9 +40,11 @@ class RoseAPI {
 
     /**
      */
-    constructor(tokens, apiUrl = Server.ApiUrl) {
-	this.tokens = tokens
-	this.apiUrl = apiUrl
+    constructor(tokens, options) {
+	const { debug, apiUrl } = options || {};
+	this.tokens = tokens;
+	this.apiUrl = apiUrl || Server.ApiUrl;
+	this.debug = debug;
     }
 
     /**
@@ -94,12 +97,21 @@ class RoseAPI {
 	    encoding: null,
 	    body: getReadStream()
 	};
+
+	const checkResult = res => {
+	    if (res.statusCode !== 200) {
+		cb(res.body);
+	    } else {
+		cb(null, res.body);
+	    }
+	};
+	
 	request(requestObject, (err, res) => {
 	    if (err) {
 		return cb(err);
 	    }
 	    if (res.statusCode === 500) { // unauthorized
-		console.log('--> unauthorized; trying to get a refreshed token...');
+		this.debug && console.log('--> unauthorized; trying to get a refreshed token...');
 		this._getRefreshedTokens()
 		    .then(tokens => {
 			const requestObject = {
@@ -110,19 +122,19 @@ class RoseAPI {
 			    body: getReadStream()
 			};
 			//requestObject.auth.bearer = tokens.access_token
-			console.log('--> retrying request with refreshed token...');
+			this.debug && console.log('--> retrying request with refreshed token...');
 			request(requestObject, (err, res) => {
 			    if (err) {
 				return cb(err);
 			    }
-			    cb(null, res);
+			    checkResult(res);
 			})
 		    })
 		    .catch(err => {
 			cb(err);
 		    })
 	    } else {
-		cb(null, res);
+		checkResult(res);
 	    }
 	});
     }
@@ -205,7 +217,7 @@ class RoseAPI {
 	const checkResult = res => {
 	    if (res.statusCode === 200) {
 		if (returnResultAsIs) {
-		    console.log(`returning response body as-is: content-type: ${res.headers['content-type']}`);
+		    this.debug && console.log(`returning response body as-is: content-type: ${res.headers['content-type']}`);
 		    return cb(null, res.body);
 		} else {
 		    return jsonResult(res.body);
@@ -223,11 +235,11 @@ class RoseAPI {
 		return cb(err);
 	    }
 	    if (res.statusCode === 500) { // unauthorized
-		console.log('unauthorized; trying to get a refreshed token...');
+		this.debug && console.log('unauthorized; trying to get a refreshed token...');
 		this._getRefreshedTokens()
 		    .then(tokens => {
 			requestObject.auth.bearer = tokens.access_token
-			console.log('retrying request with refreshed token...');
+			this.debug && console.log('retrying request with refreshed token...');
 			request(requestObject, (err, res) => {
 			    if (err) {
 				return cb(err);
@@ -360,13 +372,53 @@ class RoseAPI {
     api_findBackendSystems(queryTerm, callback) {
 	this.api_findEntities('backend_systems', queryTerm, callback);
     }
-    
+
     api_findRobots(queryTerm, callback) {
 	this.api_findEntities('robots', queryTerm, callback);
     }
     
     api_findConnections(queryTerm, callback) {
 	this.api_findEntities('connections', queryTerm, callback);
+    }
+
+    // -----------------------------------------------------------------------------
+    
+    api_findOneEntity(entityName, queryTerm, callback) {
+	const cb = ensureFunction(callback);
+	this.api_findEntities(entityName, queryTerm, (err, res) => {
+	    if (err) {
+		return cb(err);
+	    }
+	    if (!Array.isArray(res)) {
+		return cb(`unexpected type of result: ${typeof res}`);
+	    }
+	    cb(null, res[0]);
+	});
+    }
+
+    api_findOneBackendSystem(queryTerm, callback) {
+	this.api_findOneEntity('backend_systems', queryTerm, callback);
+    }
+
+    api_findOneRobot(queryTerm, callback) {
+	this.api_findOneEntity('robots', queryTerm, callback);
+    }
+    
+    api_findOneConnection(queryTerm, callback) {
+	this.api_findOneEntity('connections', queryTerm, callback);
+    }
+
+    // -----------------------------------------------------------------------------
+    
+    api_findConnectionClass(queryTerm, callback) {
+	if ((typeof queryTerm === 'string')) {
+	    callback(`queryTerm must be an object`);
+	    return;
+	}
+	const newQueryTerm = {}
+	Object.keys(queryTerm).forEach(key => newQueryTerm[key] = queryTerm[key]);
+	newQueryTerm.CLASS_UUID = "$isnull";
+	this.api_findOneConnection(newQueryTerm, callback);
     }
     
     // -----------------------------------------------------------------------------
@@ -434,7 +486,7 @@ class RoseAPI {
 	    if (!__JSON) return {}
 	    try {
 		const jsonObj = JSON.parse(__JSON);
-		console.log(`__JSON: ${JSON.stringify(jsonObj, null, 2)}`);
+		this.debug && console.log(`__JSON: ${JSON.stringify(jsonObj, null, 2)}`);
 		cb(null, jsonObj);
 	    } catch (err) {
 		return cb(err);
@@ -520,6 +572,31 @@ class RoseAPI {
 	})
     }
 
+    api_downloadInstanceCode(uuid, targetFolder, optionsOrCallback, callback) {
+	const cb = (typeof optionsOrCallback === 'function')
+	      ? optionsOrCallback : ensureFunction(callback);
+	const options = (typeof optionsOrCallback === 'object') ? optionsOrCallback : {};
+	const { dryRun, debug } = options;
+	this.api_getCodeZip(uuid, (err, buf) => {
+	    if (err) {
+		return cb(err);
+	    }
+	    ZipFile.loadFromBuffer(buf, (err, zipFile) => {
+		if (err) {
+		    return cb(err);
+		}
+		const options = { dryRun, debug, clearFolder: true };
+		zipFile.extractToFolder(targetFolder, options, err => {
+		    if (err) {
+			return cb(err);
+		    }
+		    cb(null, `code extracted to folder ${targetFolder}`
+		       + (dryRun ? " [nothing done, dryRun flag is set]" : ""));
+		});
+	    });
+	});
+    };
+
     /**
      * Uploads the zip-file for the given connection class
      */
@@ -529,7 +606,7 @@ class RoseAPI {
 	const testFile = '/tmp/code.zip';
 	const { createReadStream } = require('fs');
 	const getReadStream = () => {
-	    console.log('(re)creating read stream for request...');
+	    this.debug && console.log('(re)creating read stream for request...');
 	    return createReadStream(testFile);
 	};
 	this._apiCallUploadBinary(url, getReadStream, (err, res) => {
@@ -537,7 +614,7 @@ class RoseAPI {
 		console.error(`ERROR: ${err}`)
 		return cb(err);
 	    }
-	    console.log(`upload successful.`);
+	    this.debug && console.log(`upload successful.`);
 	    cb(null, res);
 	});
     }
@@ -558,8 +635,8 @@ const ensureFunction = callback => (
  * The rose-api module exports nodejs functions to access the
  * different functionality offered by the RoseStudio environment.
  */
-module.exports = (tokens, apiUrl) => {
-    const rose = new RoseAPI(tokens, apiUrl);
+module.exports = (tokens, options) => {
+    const rose = new RoseAPI(tokens, options);
     const apiObject = {};
     const roseProto = Object.getPrototypeOf(rose);
 

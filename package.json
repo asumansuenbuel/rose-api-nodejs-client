@@ -23,6 +23,7 @@
   "dependencies": {
     "google-auth-library": "^5.7.0",
     "http": "0.0.0",
+    "jszip": "^3.2.2",
     "open": "^7.0.0",
     "request": "^2.88.0",
     "server-destroy": "^1.0.1",
