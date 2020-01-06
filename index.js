@@ -392,6 +392,16 @@ class RoseAPI {
 	    if (!Array.isArray(res)) {
 		return cb(`unexpected type of result: ${typeof res}`);
 	    }
+	    if (res.length === 0) {
+		let errmsg = `found no record that matches `
+		    + `the given query ${JSON.stringify(queryTerm)}`;
+		return cb(errmsg);
+	    }
+	    if (res.length > 1) {
+		let errmsg = `found more than one record that `
+		    + `matches the given query ${JSON.stringify(queryTerm)}`;
+		return cb(errmsg);
+	    }
 	    cb(null, res[0]);
 	});
     }
@@ -407,10 +417,60 @@ class RoseAPI {
     api_findOneConnection(queryTerm, callback) {
 	this.api_findOneEntity('connections', queryTerm, callback);
     }
+    
+    api_getAllConnectionInstances(uuid, callback) {
+	const qobj = { CLASS_UUID: uuid };
+	this.api_findConnections(qobj, callback);
+    }
+
+    api_findConnectionInstances(uuid, queryObject, callback) {
+	const qobj = queryObject || {};
+	qobj.CLASS_UUID = uuid;
+	this.api_findConnections(qobj, callback);
+    }
+
+    api_findOneConnectionInstance(classUuidOrQueryObject, instanceQueryObject, callback) {
+	const cb = ensureFunction(callback);
+	const _findUsingClassUuid = classUuid => {
+	    let qobj = shallowCopy(instanceQueryObject);
+	    qobj.CLASS_UUID = classUuid;
+	    this.api_findOneConnection(qobj, callback);
+	}
+	if (typeof classUuidOrQueryObject === 'string') {
+	    return _findUsingClassUuid(classUuidOrQueryObject);
+	}
+	this.api_findOneConnectionClass(classUuidOrQueryObject, (err, classObj) => {
+	    if (err) {
+		return cb(err);
+	    }
+	    const { UUID } = classObj;
+	    _findUsingClassUuid(UUID);
+	});
+    }
+
+    // -----------------------------------------------------------------------------
+
+    /**
+     *
+     * This method takes either a uuid string or a queryObject to return an entity of the given category.
+     * If a queryTerm is used, it must result in exactly one result, otherwise the method will fail.
+     *
+     */
+    _getOrFindOneEntity(entityName, uuidOrQueryObject, callback) {
+	if (typeof uuidOrQueryObject === 'string') {
+	    let uuid = uuidOrQueryObject;
+	    this.api_getEntity(entityName, uuid, callback);
+	    return;
+	}
+	if (typeof uuidOrQueryObject === 'object') {
+	    let queryObject = uuidOrQueryObject;
+	    this.api_findOneEntity(entityName, queryObject, callback);
+	}
+    }
 
     // -----------------------------------------------------------------------------
     
-    api_findConnectionClass(queryTerm, callback) {
+    api_findOneConnectionClass(queryTerm, callback) {
 	if ((typeof queryTerm === 'string')) {
 	    callback(`queryTerm must be an object`);
 	    return;
@@ -525,7 +585,9 @@ class RoseAPI {
      * Instantiate a placeholder object for the connection instance with the given uuid.
      * @param {string} uuid - the uuid of the connection instance object
      * @param {string} placeholderId - the placeholderId to be instanstiated
-     * @param {string} withUuid - the uuid of the object the placeholder is intantiated with
+     * @param {string} withUuid - the uuid of the object the
+     * placeholder is intantiated with; if set to null, the
+     * placeholder instantiation is removed.
      * @param {object} [options] - optional options object
      * @param {boolean} options.debug - debug flag
      * @param {callback} callback - the callback function call on
@@ -536,7 +598,10 @@ class RoseAPI {
 	const cb = (typeof optionsOrCallback === 'function')
 	      ? optionsOrCallback : ensureFunction(callback);
 	const options = (typeof optionsOrCallback === 'object') ? optionsOrCallback : {};
-	const url = `instantiate/${uuid}?placeholderId=${placeholderId}&withUuid=${withUuid}`;
+	let url = `instantiate/${uuid}?placeholderId=${placeholderId}`;
+	if (withUuid) {
+	    url += `&withUuid=${withUuid}`;
+	}
 	this._apiCall(url, {}, cb);
     }
     
@@ -559,17 +624,6 @@ class RoseAPI {
 	})
     }
 
-    api_getConnectionInstances(uuid, callback) {
-	const qobj = { CLASS_UUID: uuid };
-	this.api_findConnections(qobj, callback);
-    }
-
-    api_findConnectionInstances(uuid, queryObject, callback) {
-	const qobj = queryObject || {};
-	qobj.CLASS_UUID = uuid;
-	this.api_findConnections(qobj, callback);
-    }
-
     /**
      * retrieve the config json object of the connection class or
      * instance
@@ -585,6 +639,30 @@ class RoseAPI {
 		return cb(null, {});
 	    }
 	    cb(null, configJsonObj);
+	})
+    }
+
+    /**
+     * retrieve the placeholder information for the given connection
+     * object. If the object refers to an connection instance,the
+     * placeholders might have an "instantiatedObject" field
+     * indicating the a given placeholder is instantiated.
+     * @param {string} uuid - the uuid of the connection class or instance object
+     * @param {callback} callback - the callback function, placeholder
+     * object is passed as second parameter.
+     * @alias module:rose-api#getConnectionPlaceholderInfo
+     */
+    api_getConnectionPlaceholderInfo(uuid, callback) {
+	const cb = ensureFunction(callback);
+	this._getConnectionJSON(uuid, (err, jsonObj) => {
+	    if (err) {
+		return cb(err);
+	    }
+	    const { placeholderObjects } = jsonObj;
+	    if (!placeholderObjects) {
+		return cb(null, {});
+	    }
+	    cb(null, placeholderObjects);
 	})
     }
 
@@ -607,7 +685,7 @@ class RoseAPI {
      * an connection instance object. The method triggers the run of
      * the code generation on the given instance and returns the
      * entire folder structure in the zip-binary.
-     * @param {string} uuid - the uuid of the connection instance
+     * @param {string} uuid - the uuid of the connection _instance_
      * object
      * @param {function} callback - the callback function; in this
      * case the response is a binary representing the content of a
@@ -739,13 +817,49 @@ const ensureFunction = callback => (
     (typeof callback === 'function') ? callback : (() => {})
 )
 
+/** @ignore */
+const shallowCopy = obj => {
+    const cobj = {};
+    Object.keys(obj).forEach(key => cobj[key] = obj[key]);
+    return cobj;
+}
+
+// ---------------------------------------------------------------------------------
+    
+
 /**
  * @name rose-api
  * @module rose-api
  * @global 
  * @description
+ *
  * The rose-api module exports nodejs functions to access the
  * different functionality offered by the RoseStudio environment.
+ * 
+ * ### Callback functions used in the API
+ * 
+ * All callback functions used in this API are expected to follow the
+ * commonly used nodejs callback function signature
+ *
+ * ```
+ * (err, result) => {
+ *     if (err) {
+ *       // do error handling
+ *      return;
+ *     }
+ *     // happy path: process the result parameter
+ * }
+ * ```
+ * 
+ * with the first parameter being the error parameter, which is
+ * passed as a non-null value in case an * error is reported.
+ *
+ * Note that, in some case, the description of the API method includes
+ * the phrase "returns _xyz_", which actually means that the callback
+ * function is invoked with _xyz_ as `result` parameter on successful
+ * completion of the operation.
+ * 
+ * @author Asuman Suenbuel
  */
 module.exports = (tokens, options) => {
     const rose = new RoseAPI(tokens, options);

@@ -8,7 +8,8 @@
     ],
     "opts": {
 	"template": "jsdoc-template",
-	"sort": false
+	"sort": false,
+	"destination": "../asu-dev-startups/public/doc/api"
     },
     "default": {
     },
