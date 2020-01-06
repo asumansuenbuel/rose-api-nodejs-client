@@ -260,8 +260,9 @@ class RoseAPI {
 
     /**
      * retrieves the object representing the currently authenticated user
-     * @alias module:rose-api#getUser
      * @param {callback} callback
+     * @global
+     * @alias getUser
      */
     api_getUser(callback) {
 	this._apiCall('user', {}, callback);
@@ -270,7 +271,8 @@ class RoseAPI {
     // -----------------------------------------------------------------------------
     
     /**
-     * @alias module:rose-api#getEntities
+     * @global
+     * @alias getEntities
      * @param {entityName} entityName
      *
      */
@@ -279,32 +281,36 @@ class RoseAPI {
     }
 
     /**
-     *
-     * @alias module:rose-api#getBackendSystems
+     * @see getEntities
+     * @global
+     * @alias getBackendSystems
      */
     api_getBackendSystems(callback) {
 	this.api_getEntities('backend_systems', callback);
     }
 
     /**
-     *
-     * @alias module:rose-api#getRobots
+     * @see getEntities
+     * @global
+     * @alias getRobots
      */
     api_getRobots(callback) {
 	this.api_getEntities('robots', callback);
     }
 
     /**
-     *
-     * @alias module:rose-api#getConnections
+     * @see getEntities
+     * @global
+     * @alias getConnections
      */
     api_getConnections(callback) {
 	this.api_getEntities('connections', callback);
     }
 
     /**
-     *
-     * @alias module:rose-api#getConnectionClasses
+     * @see getEntities
+     * @global
+     * @alias getConnectionClasses
      */
     api_getConnectionClasses(callback) {
 	const cb = (typeof callback === 'function') ? callback : (() => {});
@@ -319,21 +325,42 @@ class RoseAPI {
     // -----------------------------------------------------------------------------
 
     /**
-     *
-     * @alias module:rose-api#getEntity
+     * Retrieves the record stored in the Rose database for the object
+     * with the given uuid and entity. Entity can be one of
+     * 'backend_systems', 'robots', or 'connections'.
+     * @global
+     * @param {entityName} entityName - the entity of the object to be retrieved
+     * @param {string} uuid - the uuid of the object to be retrieved
+     * @param {callback} callback - callback function for processing the result
+     * @alias getEntity
      */
     api_getEntity(entityName, uuid, callback) {
 	this._apiCall(`rest/${entityName}/${uuid}`, {}, callback);
     }
 
+    /**
+     * @see getEntity
+     * @global
+     * @alias getBackendSystem
+     */
     api_getBackendSystem(uuid, callback) {
 	this.api_getEntity('backend_systems', uuid, callback);
     }
 
+    /**
+     * @see getEntity
+     * @global
+     * @alias getRobot
+     */
     api_getRobot(uuid, callback) {
 	this.api_getEntity('robots', uuid, callback);
     }
 
+    /**
+     * @see getEntity
+     * @global
+     * @alias getConnection
+     */
     api_getConnection(uuid, callback) {
 	this.api_getEntity('connections', uuid, callback);
     }
@@ -355,7 +382,8 @@ class RoseAPI {
      * would result in "NAME" LIKE 'Fetch%' condition; "$ilike" can be
      * used for comparision ignoring the case.
      * @param {callback} callback
-     * @alias module:rose-api#findEntities
+     * @global
+     * @alias findEntities
      */
     api_findEntities(entityName, queryTerm, callback) {
 	let url = `rest/${entityName}`;
@@ -369,20 +397,39 @@ class RoseAPI {
 	this._apiCall(url, {}, callback);
     }
 
+    /**
+     * @see findEntities
+     * @global
+     * @alias findBackendSystems
+     */
     api_findBackendSystems(queryTerm, callback) {
 	this.api_findEntities('backend_systems', queryTerm, callback);
     }
 
+    /**
+     * @see findEntities
+     * @global
+     * @alias findRobots
+     */
     api_findRobots(queryTerm, callback) {
 	this.api_findEntities('robots', queryTerm, callback);
     }
-    
+
+    /**
+     * @see findEntities
+     * @global
+     * @alias findConnections
+     */
     api_findConnections(queryTerm, callback) {
 	this.api_findEntities('connections', queryTerm, callback);
     }
 
     // -----------------------------------------------------------------------------
-    
+
+    /**
+     * @global
+     * @alias findOneEntity
+     */
     api_findOneEntity(entityName, queryTerm, callback) {
 	const cb = ensureFunction(callback);
 	this.api_findEntities(entityName, queryTerm, (err, res) => {
@@ -406,29 +453,56 @@ class RoseAPI {
 	});
     }
 
+    /**
+     * @see findOneEntity
+     * @global
+     * @alias findOneBackendSystem
+     */
     api_findOneBackendSystem(queryTerm, callback) {
 	this.api_findOneEntity('backend_systems', queryTerm, callback);
     }
 
+    /**
+     * @see findOneEntity
+     * @global
+     * @alias findOneRobot
+     */
     api_findOneRobot(queryTerm, callback) {
 	this.api_findOneEntity('robots', queryTerm, callback);
     }
-    
+
+    /**
+     * @see findOneEntity
+     * @global
+     * @alias findOneConnection
+     */
     api_findOneConnection(queryTerm, callback) {
 	this.api_findOneEntity('connections', queryTerm, callback);
     }
-    
+
+    /**
+     * @global
+     * @alias getAllConnectionInstances
+     */
     api_getAllConnectionInstances(uuid, callback) {
 	const qobj = { CLASS_UUID: uuid };
 	this.api_findConnections(qobj, callback);
     }
 
+    /**
+     * @global
+     * @alias findConnectionInstances
+     */
     api_findConnectionInstances(uuid, queryObject, callback) {
 	const qobj = queryObject || {};
 	qobj.CLASS_UUID = uuid;
 	this.api_findConnections(qobj, callback);
     }
 
+    /**
+     * @global
+     * @alias findOneConnectionInstance
+     */
     api_findOneConnectionInstance(classUuidOrQueryObject, instanceQueryObject, callback) {
 	const cb = ensureFunction(callback);
 	const _findUsingClassUuid = classUuid => {
@@ -469,7 +543,11 @@ class RoseAPI {
     }
 
     // -----------------------------------------------------------------------------
-    
+
+    /**
+     * @global
+     * @alias findOneConnectionClass
+     */
     api_findOneConnectionClass(queryTerm, callback) {
 	if ((typeof queryTerm === 'string')) {
 	    callback(`queryTerm must be an object`);
@@ -482,7 +560,11 @@ class RoseAPI {
     }
     
     // -----------------------------------------------------------------------------
-    
+
+    /**
+     * @global
+     * @alias createEntity
+     */
     api_createEntity(entityName, obj, callback) {
 	const url = `rest/${entityName}`
 	const requestObj = {
@@ -492,16 +574,31 @@ class RoseAPI {
 	this._apiCall(url, requestObj, callback);
     }
 
+    /**
+     * @see createEntity
+     * @global
+     * @alias createBackendSystem
+     */
     api_createBackendSystem(obj, callback) {
 	const entityName = 'backend_systems';
 	this.api_createEntity(entityName, obj, callback);
     }
 
+    /**
+     * @see createEntity
+     * @global
+     * @alias createRobot
+     */
     api_createRobot(obj, callback) {
 	const entityName = 'robots';
 	this.api_createEntity(entityName, obj, callback);
     }
 
+    /**
+     * @see createEntity
+     * @global
+     * @alias createConnection
+     */
     api_createConnection(obj, callback) {
 	const entityName = 'connections';
 	this.api_createEntity(entityName, obj, callback);
@@ -510,6 +607,10 @@ class RoseAPI {
 
     // -----------------------------------------------------------------------------
 
+    /**
+     * @global
+     * @alias updateEntity
+     */
     api_updateEntity(entityName, uuid, obj, callback) {
 	const url = `rest/${entityName}/${uuid}`;
 	const requestObj = {
@@ -519,16 +620,31 @@ class RoseAPI {
 	this._apiCall(url, requestObj, callback);
     }
 
+    /**
+     * @see updateEntity
+     * @global
+     * @alias updateBackendSystem
+     */
     api_updateBackendSystem(uuid, obj, callback) {
 	const entityName = 'backend_systems';
 	this.api_updateEntity(entityName, uuid, obj, callback);
     }
 
+    /**
+     * @see updateEntity
+     * @global
+     * @alias updateRobot
+     */
     api_updateRobot(uuid, obj, callback) {
 	const entityName = 'robots';
 	this.api_updateEntity(entityName, uuid, obj, callback);
     }
 
+    /**
+     * @see updateEntity
+     * @global
+     * @alias updateConnection
+     */
     api_updateConnection(uuid, obj, callback) {
 	const entityName = 'connections';
 	this.api_updateEntity(entityName, uuid, obj, callback);
@@ -544,7 +660,8 @@ class RoseAPI {
      * string, it's interpreted as the NAME of the new instance.
      * @param {callback} callback - callback function, called with the
      * resulting new instance object as second argument.
-     * @alias module:rose-api#createInstance
+     * @global
+     * @alias createInstance
      */
     api_createInstance(uuid, obj, callback) {
 	const cb = ensureFunction(callback);
@@ -592,7 +709,8 @@ class RoseAPI {
      * @param {boolean} options.debug - debug flag
      * @param {callback} callback - the callback function call on
      * completion of the instantiation (or when an error occurred).
-     * @alias module:rose-api#instantiatePlaceholder
+     * @global
+     * @alias instantiatePlaceholder
      */
     api_instantiatePlaceholder(uuid, placeholderId, withUuid, optionsOrCallback, callback) {
 	const cb = (typeof optionsOrCallback === 'function')
@@ -627,6 +745,11 @@ class RoseAPI {
     /**
      * retrieve the config json object of the connection class or
      * instance
+     * @param {string} uuid - the uuid of the connection class or instance object
+     * @param {callback} callback - the callback function; config-json
+     * object is passed as second parameter.
+     * @global
+     * @alias getConnectionConfigJson
      */
     api_getConnectionConfigJson(uuid, callback) {
 	const cb = ensureFunction(callback);
@@ -650,7 +773,8 @@ class RoseAPI {
      * @param {string} uuid - the uuid of the connection class or instance object
      * @param {callback} callback - the callback function, placeholder
      * object is passed as second parameter.
-     * @alias module:rose-api#getConnectionPlaceholderInfo
+     * @global
+     * @alias getConnectionPlaceholderInfo
      */
     api_getConnectionPlaceholderInfo(uuid, callback) {
 	const cb = ensureFunction(callback);
@@ -690,7 +814,9 @@ class RoseAPI {
      * @param {function} callback - the callback function; in this
      * case the response is a binary representing the content of a
      * zip-file.
-     * @alias module:rose-api#getCodeZip
+     *
+     * @global
+     * @alias getCodeZip
      */
     api_getCodeZip(uuid, callback) {
 	const cb = ensureFunction(callback);
@@ -776,7 +902,9 @@ class RoseAPI {
      * of the file (not the full path). By default, files and folders
      * named ".git" and "node_modules" are ommited from the upload.
      * @param {callback} callback - callback called on termination/failure of the operation
-     * @alias module:rose-api#uploadCodeTemplate
+     * 
+     * @global
+     * @alias uploadCodeTemplate
      */
     api_uploadCodeTemplate(uuid, sourceFolder, optionsOrCallback, callback) {
 	const cb = (typeof optionsOrCallback === 'function')
@@ -829,8 +957,7 @@ const shallowCopy = obj => {
 
 /**
  * @name rose-api
- * @module rose-api
- * @global 
+ * @module
  * @description
  *
  * The rose-api module exports nodejs functions to access the

@@ -1,5 +1,6 @@
 {
-    "sourceType": "package",
+    "title": "Rose-API documentation",
+    "sourceType": "module",
     "source": {
 	"include": ["index.js"]
     },

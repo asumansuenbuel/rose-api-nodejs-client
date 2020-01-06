@@ -385,7 +385,7 @@ function buildNav(members) {
             nav += `<h3>${linkto('global', 'Global')}</h3>`;
         }
         else {
-            nav += `<h3>Global</h3><ul>${globalNav}</ul>`;
+            nav += `<h3>API methods</h3><ul>${globalNav}</ul>`;
         }
     }
 
@@ -447,7 +447,7 @@ exports.publish = (taffyData, opts, tutorials) => {
     helper.setTutorials(tutorials);
 
     data = helper.prune(data);
-    //data.sort('longname, version, since');
+    data.sort('longname, version, since');
     helper.addEventListeners(data);
 
     data().each(doclet => {
@@ -609,21 +609,22 @@ exports.publish = (taffyData, opts, tutorials) => {
         generateSourceFiles(sourceFiles, opts.encoding);
     }
 
-    if (members.globals.length) { generate('Global', [{kind: 'globalobj'}], globalUrl); }
+    if (members.globals.length) { generate('Rose API', [{kind: 'globalobj'}], globalUrl); }
 
     // index page displays information from package.json and lists files
     files = find({kind: 'file'});
     packages = find({kind: 'package'});
 
-    generate('Home',
-        packages.concat(
-            [{
-                kind: 'mainpage',
-                readme: opts.readme,
-                longname: (opts.mainpagetitle) ? opts.mainpagetitle : 'Main Page'
-            }]
-        ).concat(files), indexUrl);
-
+    if (false) {
+	generate('Home',
+		 packages.concat(
+		     [{
+			 kind: 'mainpage',
+			 readme: opts.readme,
+			 longname: (opts.mainpagetitle) ? opts.mainpagetitle : 'Main Page'
+		     }]
+		 ).concat(files), indexUrl);
+    }
     // set up the lists that we'll use to generate pages
     classes = taffy(members.classes);
     modules = taffy(members.modules);
