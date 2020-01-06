@@ -21,7 +21,7 @@
 const { OAuth2Client } = require('google-auth-library');
 const request = require('request');
 
-const { Server, Auth } = require('./config');
+const { Server, Auth, Settings } = require('./config');
 const ZipFile = require('./create-zip');
 
 const RoseJsonDecorator = '%JSN';
@@ -268,7 +268,7 @@ class RoseAPI {
     }
 
     // -----------------------------------------------------------------------------
-
+    
     /**
      * @alias module:rose-api#getEntities
      * @param {entityName} entityName
@@ -353,7 +353,7 @@ class RoseAPI {
      * { "NAME": { "$like": "Fetch%" } }
      * 
      * would result in "NAME" LIKE 'Fetch%' condition; "$ilike" can be
-     * used for case-insesitive comparision.
+     * used for comparision ignoring the case.
      * @param {callback} callback
      * @alias module:rose-api#findEntities
      */
@@ -476,6 +476,71 @@ class RoseAPI {
 
     // -----------------------------------------------------------------------------
 
+    /**
+     * creates an instance of a connection class.
+     * @param {string} uuid - the uuid of a connection class object
+     * @param {object|string} obj - the properties of the newly
+     * created instance; must include a NAME property. If given as
+     * string, it's interpreted as the NAME of the new instance.
+     * @param {callback} callback - callback function, called with the
+     * resulting new instance object as second argument.
+     * @alias module:rose-api#createInstance
+     */
+    api_createInstance(uuid, obj, callback) {
+	const cb = ensureFunction(callback);
+	if (typeof obj === 'string') {
+	    obj = { NAME: obj };
+	}
+	if (typeof obj !== 'object') {
+	    const errmsg = `properties object missing for creating instance`;
+	    return cb(errmsg);
+	}
+	const { NAME } = obj;
+	if (typeof NAME !== 'string' || NAME.trim().length === 0) {
+	    const errmsg = `"NAME" field not specified for new instance`;
+	    return cb(errmsg);
+	}
+	this.api_getConnection(uuid, (err, classObj) => {
+	    if (err) {
+		return cb(err);
+	    }
+	    const { CLASS_UUID } = classObj;
+	    if (CLASS_UUID) {
+		const errmsg = `Can't create instance of an instance (uuid: "${uuid}", name: "${classObj.NAME}")`;
+		return cb(errmsg);
+	    }
+	    Object.keys(classObj).forEach(key => {
+		if (Settings.SystemFields.includes(key)) return;
+		if (key === 'NAME') return;
+		obj[key] = classObj[key];
+	    });
+	    obj.CLASS_UUID = uuid;
+	    obj['Git Clone URL'] = '';
+	    obj['Git Subfolder'] = '';
+	    this.api_createConnection(obj, cb);
+	})
+    }
+
+    /**
+     * Instantiate a placeholder object for the connection instance with the given uuid.
+     * @param {string} uuid - the uuid of the connection instance object
+     * @param {string} placeholderId - the placeholderId to be instanstiated
+     * @param {string} withUuid - the uuid of the object the placeholder is intantiated with
+     * @param {object} [options] - optional options object
+     * @param {boolean} options.debug - debug flag
+     * @param {callback} callback - the callback function call on
+     * completion of the instantiation (or when an error occurred).
+     * @alias module:rose-api#instantiatePlaceholder
+     */
+    api_instantiatePlaceholder(uuid, placeholderId, withUuid, optionsOrCallback, callback) {
+	const cb = (typeof optionsOrCallback === 'function')
+	      ? optionsOrCallback : ensureFunction(callback);
+	const options = (typeof optionsOrCallback === 'object') ? optionsOrCallback : {};
+	const url = `instantiate/${uuid}?placeholderId=${placeholderId}&withUuid=${withUuid}`;
+	this._apiCall(url, {}, cb);
+    }
+    
+    // -----------------------------------------------------------------------------
     _getConnectionJSON(uuid, callback) {
 	const cb = ensureFunction(callback)
 	this.api_getConnection(uuid, (err, obj) => {
@@ -603,7 +668,7 @@ class RoseAPI {
     api_postCodeZip(uuid, callback) {
 	const cb = ensureFunction(callback);
 	const url = `binary/zip/${uuid}`;
-	const testFile = '/tmp/code.zip';
+	const testFile = '/tmp/foo.zip';
 	const { createReadStream } = require('fs');
 	const getReadStream = () => {
 	    this.debug && console.log('(re)creating read stream for request...');
@@ -616,6 +681,53 @@ class RoseAPI {
 	    }
 	    this.debug && console.log(`upload successful.`);
 	    cb(null, res);
+	});
+    }
+
+    /**
+     * Uploads the contens of the sourceFolder into the code folder of
+     * the connection class object with the given uuid.
+     * @param {string} uuid - the uuid of the connection class object
+     * @param {string} sourceFolder - the local source folder the
+     * content of which is uploaded to the server
+     * @param {object} [options] - optional options, see below
+     * @param {boolean} options.dryRun - dry-run flag, if set to true, nothing is uploaded
+     * @param {debug} options.debug - if true, shows debug messages on the console
+     * @param {function} options.filterFunction - filter function for
+     * file names to include in the upload; it's run on the basename
+     * of the file (not the full path). By default, files and folders
+     * named ".git" and "node_modules" are ommited from the upload.
+     * @param {callback} callback - callback called on termination/failure of the operation
+     * @alias module:rose-api#uploadCodeTemplate
+     */
+    api_uploadCodeTemplate(uuid, sourceFolder, optionsOrCallback, callback) {
+	const cb = (typeof optionsOrCallback === 'function')
+	      ? optionsOrCallback : ensureFunction(callback);
+	const options = (typeof optionsOrCallback === 'object') ? optionsOrCallback : {};
+	const { dryRun, debug } = options;
+	debug && console.log(`uploading code from folder "${sourceFolder}"...`);
+	const zip = new ZipFile();
+	try {
+	    zip.addFolderRecursively(sourceFolder, sourceFolder, options);
+	} catch (err) {
+	    return cb(err);
+	}
+	const url = `binary/zip/${uuid}`;
+	const getReadStream = () => {
+	    this.debug && console.log('(re)creating zip read stream for request...');
+	    return zip.getReadStream();
+	};
+	if (dryRun) {
+	    cb(null, 'dryRun, nothing uploaded.');
+	    return;
+	}
+	this._apiCallUploadBinary(url, getReadStream, (err, res) => {
+	    if (err) {
+		console.error(`ERROR: ${err}`)
+		return cb(err);
+	    }
+	    debug && console.log(`upload successful.`);
+	    cb(null, res.toString());
 	});
     }
 }
@@ -655,14 +767,17 @@ module.exports = (tokens, options) => {
 
 /**
  * The format of callback function used in the API methods
+ * @alias module:rose-api#callback
  * @callback callback
  * @param {(string|object)} err The err as returned by the API method, or null if no error occurred.
  * @param {object} response the response object generated by the API method.
  */
 
 /**
+ * The possible values for an entity name in RoseAPI calls.
  * @typedef {string} entityName
  * @property {string} 'backend_systems' entity name for backend systems
  * @property {string} 'robots' entity name for robots
  * @property {string} 'connections' entity name for connections (classes and instances)
+ * @alias module:rose-api#entityName
  */

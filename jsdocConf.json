@@ -1,9 +1,16 @@
 {
-    "sourceType": "module",
+    "sourceType": "package",
     "source": {
-	"include": "index.js"
+	"include": ["index.js"]
     },
+    "plugins": [
+        "plugins/markdown"
+    ],
     "opts": {
+	"template": "jsdoc-template",
 	"sort": false
-    }
+    },
+    "default": {
+    },
+    "addSourceLinks": false
 }

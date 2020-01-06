@@ -5,9 +5,11 @@
  */
 
 const JSZip = require('jszip')
-const { existsSync, lstatSync, statSync, readFileSync, writeFileSync, createWriteStream } = require('fs');
+const { existsSync, readdirSync, lstatSync, statSync,
+	readFileSync, writeFileSync, createWriteStream } = require('fs');
 const { ingreen, inblue, inyellow, inblack, inmagenta, incyan } = require('./colorize');
 const { removeFolderRecursively, PromiseChain } = require('./server_utils');
+const { relative, join } = require('path');
 
 class ZipFile {
 
@@ -57,6 +59,48 @@ class ZipFile {
 		response.header('Content-Disposition', 'attachment; filename="' + filename + '"');
 		response.send(data)
 	    })
+    }
+
+    /**
+     * adds all files in the given folder recursively to the zip
+     * file. All paths in the zip file will be relative to the given
+     * folder, i.e. the folder itself is not added to the zipfile.
+     */
+    addFolderRecursively(folder, rootFolder = folder, options) {
+	const { dryRun, debug, debugIndent, fileFilterFunction } = options || {};
+	const indent = (typeof debugIndent === 'string') ? debugIndent : '';
+	debug && console.log(`${indent}addFolderRecursively("${folder}", rootFolder="${rootFolder}")...`);
+	const fileFilter = (typeof fileFilterFunction === 'function')
+	      ? fileFilterFunction : (() => true);
+	if (!lstatSync(folder).isDirectory()) {
+	    console.error(`${folder} is not a directory`);
+	    return;
+	}
+	const files = readdirSync(folder).filter(filename => {
+	    if (!fileFilter(filename)) return false;
+	    if (filename === ".git") return false;
+	    if (filename === "node_modules") return false;
+	    return true;
+	});
+	files.forEach(filename => {
+	    const filepath = join(folder, filename);
+	    if (lstatSync(filepath).isDirectory()) {
+		debug && console.log(`${indent}${filepath} is a directory`);
+		options.debugIndent = `${indent}    `;
+		this.addFolderRecursively(filepath, rootFolder, options);
+		return;
+	    }
+	    const name = relative(rootFolder, filepath);
+	    debug && console.log(`${indent}adding to zip: file: "${filepath}", name: "${ingreen(name)}"`);
+	    if (!dryRun) {
+		this.addFile(filepath, name);
+	    }
+	})
+	debug && console.log(`${indent}done addFolderRecursively("${folder}", rootFolder="${rootFolder}")...`);
+    }
+
+    getReadStream() {
+	return this.zip.generateNodeStream({ streamFiles: true });
     }
 
     createFile(fileName, callback) {

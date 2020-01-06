@@ -9,6 +9,10 @@ const config = {
 	LocalApiUrl: 'http://localhost:6001',
 	ApiPath: '/api/v1'
     },
+
+    Settings: {
+	SystemFields: ['UUID', 'CLASS_UUID', 'CREATION_TIMESTAMP', 'MODIFIED_TIMESTAMP', 'ID']
+    },
     
     Auth: {
 	GoogleClientId: '662931900578-0ahfk02pj36mb1g7lb2u4lrgndn4fc1n.apps.googleusercontent.com',
