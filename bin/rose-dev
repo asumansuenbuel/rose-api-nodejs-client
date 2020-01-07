@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# Wrapper script to call the Rose command line interface
+# with RoseAPI
+#
+# (c) Asuman Suenbuel, 2019
+#
+
+export ROSE_SERVER_URL="http://localhost:6001"
+
+binary=$(dirname $0)/$(readlink $0)
+bindir=$(dirname ${binary})
+
+jsfile=${bindir}/../rose-cli.js
+#/usr/bin/env node 
+
+exec /usr/bin/env node ${jsfile} $*

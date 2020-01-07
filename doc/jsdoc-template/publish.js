@@ -382,7 +382,7 @@ function buildNav(members) {
 
         if (!globalNav) {
             // turn the heading into a link so you can actually get to the global page
-            nav += `<h3>${linkto('global', 'Global')}</h3>`;
+            nav += `<h3>${linkto('global', 'API methods')}</h3>`;
         }
         else {
             nav += `<h3>API methods</h3><ul>${globalNav}</ul>`;
@@ -615,7 +615,7 @@ exports.publish = (taffyData, opts, tutorials) => {
     files = find({kind: 'file'});
     packages = find({kind: 'package'});
 
-    if (false) {
+    if (true) {
 	generate('Home',
 		 packages.concat(
 		     [{

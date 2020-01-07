@@ -4,7 +4,7 @@
   "description": "Rose nodejs API",
   "main": "index.js",
   "scripts": {
-    "jsdoc": "./node_modules/.bin/jsdoc -c jsdocConf.json",
+    "jsdoc": "./node_modules/.bin/jsdoc -c doc/jsdocConf.json",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -12,7 +12,9 @@
     "url": "git+https://github.com/asumansuenbuel/rose-api-nodejs-client.git"
   },
   "bin": {
-    "get-auth-token": "./bin/get-auth-token"
+      "get-auth-token": "./bin/get-auth-token",
+      "rose": "./bin/rose",
+      "rose-dev": "./bin/rose-dev"
   },
   "keywords": [
     "Rose",
@@ -21,6 +23,7 @@
   "author": "Asuman Suenbuel",
   "license": "ISC",
   "dependencies": {
+    "commander": "^4.1.0",
     "google-auth-library": "^5.7.0",
     "http": "0.0.0",
     "jszip": "^3.2.2",

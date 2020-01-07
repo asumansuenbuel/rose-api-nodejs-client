@@ -1,14 +1,13 @@
 {
     "title": "Rose-API documentation",
-    "sourceType": "module",
     "source": {
-	"include": ["index.js"]
+	"include": ["src/api.js", "README.md"]
     },
     "plugins": [
         "plugins/markdown"
     ],
     "opts": {
-	"template": "jsdoc-template",
+	"template": "doc/jsdoc-template",
 	"sort": false,
 	"destination": "../asu-dev-startups/public/doc/api"
     },

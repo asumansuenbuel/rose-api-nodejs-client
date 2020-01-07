@@ -5,7 +5,7 @@
  *
  */
 
-const { Auth } = require('./config')
+const { Auth } = require('./src/config')
 
 const { OAuth2Client } = require('google-auth-library');
 const http = require('http');
@@ -21,7 +21,7 @@ const scopes = ['https://www.googleapis.com/auth/userinfo.profile',
 /**
  * main function
  */
-async function main() {
+async function main(options) {
     const { oAuth2Client, tokens } = await getAuthenticatedClient();
     
     const url = 'https://www.googleapis.com/oauth2/v1/userinfo?alt=json'
@@ -29,14 +29,35 @@ async function main() {
     const profile = res.data
     console.log(`profile found for "${profile.name}"`)
     //console.log(res.data);
-    saveTokenFile(profile, tokens)
+    saveTokenFile(profile, tokens, options || {})
 }
 
-function saveTokenFile(profile, tokens) {
+function _getDefaultTokensFilename(profile) {
     const profileString = `${profile.name.toLowerCase().split(/\s+/).join('-')}-${profile.id}`
-    const fileName = `tokens-${profileString}.json`
-    writeFileSync(fileName, JSON.stringify(tokens, null, 2))
-    console.log(`tokens written to "${fileName}"; 'require' this file for your RoseAPI calls.`)
+    return `tokens-${profileString}.json`
+}
+
+function saveTokenFile(profile, tokens, options) {
+    let filename;
+    if (typeof options.filename === 'string') {
+	filename = options.filename;
+    } else {
+	filename = _getDefaultTokensFilename(profile);
+    }
+    try {
+	writeFileSync(filename, JSON.stringify(tokens, null, 2));
+	if (typeof options.callback === 'function') {
+	    options.callback(null, filename);
+	} else {
+	    console.log(`tokens written to "${filename}"; 'require' this file for your RoseAPI calls.`);
+	}
+    } catch (err) {
+	if (typeof options.callback === 'function') {
+	    options.callback(err);
+	} else {
+	    console.error(`something went wrong: ${err}`);
+	}
+    }
 }
 
 /**
@@ -112,6 +133,10 @@ async function getAuthenticatedClient() {
 	      });
 	destroyer(server);
     });
+}
+
+module.exports = {
+    getAuthToken: main
 }
 
 if (module === require.main) {
