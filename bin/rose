@@ -12,4 +12,4 @@ bindir=$(dirname ${binary})
 jsfile=${bindir}/../rose-cli.js
 #/usr/bin/env node 
 
-exec /usr/bin/env node ${jsfile} $*
+exec /usr/bin/env node ${jsfile} "$@"

@@ -6,18 +6,23 @@
 
 const { inred, ingreen, inyellow, inmagenta, incyan } = require('../colorize');
 
-const cliError = errmsg => {
-    if (typeof errmsg === 'object') {
-	try {
-	    errmsg = JSON.stringify(errmsg);
-	} catch (_ignore) {}
-    }
-    console.error(inred(`*** ${errmsg}`));
+const _output = msg => {
+    try {
+	let json = JSON.parse(msg);
+	if (json.error) return json.error;
+	return JSON.stringify(json, null, 2);
+    } catch (err) {}
+    return msg;
 }
 
-const cliInfo = console.log;
+const cliError = errmsg => {
+    let msg = _output(errmsg);
+    console.error(inred(`*** ${msg}`));
+}
 
-const cliWarn = msg => console.log(inyellow(msg));
+const cliInfo = msg => console.log(_output(msg));
+
+const cliWarn = msg => console.log(_output(inyellow(msg)));
 
 module.exports = {
     cliError,

@@ -12,9 +12,9 @@
     "url": "git+https://github.com/asumansuenbuel/rose-api-nodejs-client.git"
   },
   "bin": {
-      "get-auth-token": "./bin/get-auth-token",
-      "rose": "./bin/rose",
-      "rose-dev": "./bin/rose-dev"
+    "get-auth-token": "./bin/get-auth-token",
+    "rose": "./bin/rose",
+    "rose-dev": "./bin/rose-dev"
   },
   "keywords": [
     "Rose",
@@ -23,6 +23,7 @@
   "author": "Asuman Suenbuel",
   "license": "ISC",
   "dependencies": {
+    "cli-table": "^0.3.1",
     "commander": "^4.1.0",
     "google-auth-library": "^5.7.0",
     "http": "0.0.0",
