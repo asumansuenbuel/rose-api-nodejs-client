@@ -367,6 +367,13 @@ class RoseAPI {
 
     // -----------------------------------------------------------------------------
 
+    _interpretStringAsName(queryTerm) {
+	if (typeof queryTerm !== 'string') {
+	    return queryTerm;
+	}
+	return { NAME: queryTerm };
+    }
+    
     /**
      * find entity using a queryTerm.
      * @param {entityName} entityName
@@ -387,11 +394,15 @@ class RoseAPI {
      */
     api_findEntities(entityName, queryTerm, callback) {
 	let url = `rest/${entityName}`;
+	queryTerm = this._interpretStringAsName(queryTerm);
+	/*
 	if (typeof queryTerm === 'string') {
 	    const filterCondition = escape(queryTerm);
 	    url += `?filterCondition=${filterCondition}`;
 	}
-	else if (typeof queryTerm === 'object') {
+	else
+	*/
+	if (typeof queryTerm === 'object') {
 	    url += `?filterCondition=${escape(JSON.stringify(queryTerm))}`
 	}
 	this._apiCall(url, {}, callback);
@@ -608,6 +619,14 @@ class RoseAPI {
     // -----------------------------------------------------------------------------
 
     /**
+     * Updates the object with the given id in the system with new values for the given fields.
+     * @param {entityName} entity - the entity name of the object to be updated
+     * @param {string} uuid - the uuid of the object to be updated
+     * @param {object} obj - the value object containing the fields and values to be updates, e.g.
+     * ```
+     * { NAME: 'NewName', Manufacturer: 'MyCompany' }
+     * ```
+     * @param {callback} callback - called as callback(err, updatedObjectJson)
      * @global
      * @alias updateEntity
      */
@@ -621,7 +640,11 @@ class RoseAPI {
     }
 
     /**
+     * shortcut for updating backend system objects 
      * @see updateEntity
+     * @param {string} uuid - the uuid of the object to be updated
+     * @param {object} obj - the value object containing the fields and values to be updates.
+     * @param {callback} callback - called as callback(err, updatedObjectJson)
      * @global
      * @alias updateBackendSystem
      */
@@ -631,7 +654,11 @@ class RoseAPI {
     }
 
     /**
+     * shortcut for updating robot objects 
      * @see updateEntity
+     * @param {string} uuid - the uuid of the object to be updated
+     * @param {object} obj - the value object containing the fields and values to be updates.
+     * @param {callback} callback - called as callback(err, updatedObjectJson)
      * @global
      * @alias updateRobot
      */
@@ -641,13 +668,36 @@ class RoseAPI {
     }
 
     /**
+     * shortcut for updating connection/scenario objects 
      * @see updateEntity
+     * @param {string} uuid - the uuid of the object to be updated
+     * @param {object} obj - the value object containing the fields and values to be updates.
+     * @param {callback} callback - called as callback(err, updatedObjectJson)
      * @global
      * @alias updateConnection
      */
     api_updateConnection(uuid, obj, callback) {
 	const entityName = 'connections';
 	this.api_updateEntity(entityName, uuid, obj, callback);
+    }
+
+    /**
+     * update the internal __JSON field of the connection object
+     * @param {string} uuid - the uuid of the connection object (class
+     * or instance)
+     * @param {jsonObject} jsonObject - the object representation of
+     * the __JSON field to be updated.
+     * @param {callback} callback - callback function passed through
+     * to @see updateConnection
+     */
+    _updateConnection__JSON(uuid, jsonObject, callback) {
+	try {
+	    const __JSON = JSON.stringify(jsonObject);
+	    this.api_updateConnection(uuid, { __JSON }, callback);
+	} catch (err) {
+	    let errmsg = `could not stringify JSON object: ${err}`;
+	    callback(errmsg);
+	}
     }
 
     // -----------------------------------------------------------------------------
@@ -724,22 +774,45 @@ class RoseAPI {
     }
     
     // -----------------------------------------------------------------------------
+
+    _getConnectionJSONFromObject(obj) {
+	const { __JSON } = obj;
+	if (!__JSON) return {}
+	try {
+	    const jsonObj = JSON.parse(__JSON);
+	    this.debug && console.log(`__JSON: ${JSON.stringify(jsonObj, null, 2)}`);
+	    return jsonObj;
+	} catch (err) {
+	    return {};
+	}
+    }
+    
     _getConnectionJSON(uuid, callback) {
 	const cb = ensureFunction(callback)
 	this.api_getConnection(uuid, (err, obj) => {
 	    if (err) {
 		return cb(err);
 	    }
-	    const { __JSON } = obj;
-	    if (!__JSON) return {}
 	    try {
-		const jsonObj = JSON.parse(__JSON);
-		this.debug && console.log(`__JSON: ${JSON.stringify(jsonObj, null, 2)}`);
+		const jsonObj = this._getConnectionJSONFromObject(obj);
 		cb(null, jsonObj);
 	    } catch (err) {
 		return cb(err);
 	    }
 	})
+    }
+
+    /**
+     * synchronous function to retrieve the configJson from a
+     * connection object returned by one the findConnection or
+     * getConnection methods.
+     * @param {object} obj - the object representing the connection object
+     * @global
+     * @alias getConfigJsonFromObject
+     */
+    api_getConfigJsonFromObject(obj) {
+	const jsonObj = this._getConnectionJSONFromObject(obj);
+	return jsonObj.configJsonObj;
     }
 
     /**
@@ -765,6 +838,28 @@ class RoseAPI {
 	})
     }
 
+    // -----------------------------------------------------------------------------
+
+    /**
+     * Updates the config-json of a connection class or instance.
+     * @param {string} uuid - the uuid of a connection class or instance object
+     * @param {object|string} configJson - the configJson to be updated.
+     * @param {callback} callback - callback function, called with the
+     * resulting new instance object as second argument.
+     * @global
+     * @alias updateConnectionConfigJson
+     */
+    api_updateConnectionConfigJson(uuid, configJson, callback) {
+	this.api_getConnection(uuid, (err, obj) => {
+	    if (err) {
+		return callback(err);
+	    }
+	    const json = this.api_getConfigJsonFromObject(obj);
+	    json.configJsonObj = configJson;
+	    this._updateConnection__JSON(uuid, json, callback);
+	})
+    }
+    
     /**
      * retrieve the placeholder information for the given connection
      * object. If the object refers to an connection instance,the

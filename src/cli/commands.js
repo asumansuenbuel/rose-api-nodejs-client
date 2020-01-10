@@ -4,8 +4,11 @@
  * @author Asuman Suenbuel
  */
 
-const { cliInfo, cliError, cliWarn } = require('./cli-utils');
+const fs = require('fs');
+
+const { cliInfo, cliError, cliWarn, editFile, editString } = require('./cli-utils');
 const { authenticatedRose } = require('./cli-auth');
+const { RoseFolder } = require('./rose-folder');
 
 const Table = require('cli-table');
 
@@ -67,6 +70,38 @@ class Commands {
     }
 
     cli_scenarios(namePattern = null, options = {}) {
+    }
+
+    cli_init(options = {}) {
+    }
+
+    cli_edit(name, options = {}) {
+	this.rose.findOneConnection({ NAME: { "$like": name } }, (err, obj) => {
+	    if (err) return cliError(err);
+	    const { UUID, NAME } = obj;
+	    const configJson = this.rose.getConfigJsonFromObject(obj);
+	    const cstr = JSON.stringify(configJson, null, 2);
+	    
+	    editString(cstr, "json", (newContent, hasChanged) => {
+		if (!hasChanged) {
+		    cliInfo('no changes; nothing done');
+		    return;
+		}
+		//console.log(newContent);
+		try {
+		    const newConfigJson = JSON.parse(newContent);
+		    this.rose.updateConnectionConfigJson(UUID, newConfigJson, (err, obj) => {
+			if (err) {
+			    return cliError(err);
+			}
+			cliInfo(`config-json successfully updated on server for "${NAME}".`);
+		    });
+		} catch (err) {
+		    cliError(`config must be valid JSON: ${err}`);
+		    return;
+		}
+	    });
+	})
     }
 
 }

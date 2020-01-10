@@ -35,6 +35,11 @@ program
     .description('list the entities (robots, backend_systems, connections) '
 		 + 'whose name matches the name-pattern')
 
+program
+    .command('edit-config <class-or-instance-name>')
+    .action(commands.edit)
+    .description('command to edit config of the class or an instance')
+
 program.parse(process.argv);
 
 
