@@ -40,6 +40,17 @@ program
     .action(commands.edit)
     .description('command to edit config of the class or an instance')
 
+program
+    .command('init-scenario')
+    .action(commands.initScenario)
+    .description('initialize the current folder with a scenario class (interactively)')
+
+program
+    .command('info')
+    .action(commands.folderInfo)
+    .description('get information about which directories are connected with which '
+		 + 'scenario class and instances')
+
 program.parse(process.argv);
 
 

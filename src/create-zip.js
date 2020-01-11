@@ -79,6 +79,7 @@ class ZipFile {
 	const files = readdirSync(folder).filter(filename => {
 	    if (!fileFilter(filename)) return false;
 	    if (filename === ".git") return false;
+	    if (filename === ".rose") return false;
 	    if (filename === "node_modules") return false;
 	    return true;
 	});

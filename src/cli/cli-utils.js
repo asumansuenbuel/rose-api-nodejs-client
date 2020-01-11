@@ -70,10 +70,71 @@ const editString = (string, suffix, callback) => {
     editFile(fname, callback);
 }
 
+const getUniqueNameListAndHash = records => {
+    const nameHash = {}
+    const uniqueNameList = [];
+    const hash = {}
+    records.forEach(obj => {
+	const { NAME, UUID } = obj;
+	if (typeof nameHash[NAME] !== 'number') {
+	    nameHash[NAME] = -1;
+	}
+	nameHash[NAME]++;
+	const cnt = nameHash[NAME];
+	const uniqueName = NAME + (cnt > 0 ? ` (${UUID})` : '');
+	uniqueNameList.push(uniqueName);
+	hash[uniqueName] = obj;
+    });
+    return { uniqueNameList, hash };
+}
+
+const findAllFiles = (fname, dir) => {
+    const res = {};
+    const _find = dir => {
+	try {
+	    const subdirs = [];
+	    const files = fs.readdirSync(dir);
+	    let fileFound = false;
+	    files.forEach(filename => {
+		const fullName = path.join(dir, filename);
+		if (fs.lstatSync(fullName).isDirectory()) {
+		    //console.log(` directory ${fullName}`);
+		    subdirs.push(fullName);
+		} else {
+		    if (filename === fname) {
+			fileFound = true;
+			try {
+			    let content = fs.readFileSync(fullName, 'utf-8');
+			    try {
+				content = JSON.parse(content);
+			    } catch (err) {}
+			    const key = path.resolve(dir);
+			    res[key] = content;
+			} catch (err) {
+			    console.error(err);
+			}
+		    }
+		}
+	    });
+	    if (!fileFound) {
+		subdirs.forEach(_find);
+	    }
+	} catch (err) {
+	    console.error(err);
+	}
+    }
+    _find(dir);
+    //console.log(res);
+    return res;
+}
+    
+
 module.exports = {
     cliError,
     cliInfo,
     cliWarn,
     editFile,
-    editString
+    editString,
+    getUniqueNameListAndHash,
+    findAllFiles
 }

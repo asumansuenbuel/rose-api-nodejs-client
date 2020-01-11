@@ -217,7 +217,7 @@ class RoseAPI {
 	const checkResult = res => {
 	    if (res.statusCode === 200) {
 		if (returnResultAsIs) {
-		    this.debug && console.log(`returning response body as-is: content-type: ${res.headers['content-type']}`);
+		    //this.debug && console.log(`returning response body as-is: content-type: ${res.headers['content-type']}`);
 		    return cb(null, res.body);
 		} else {
 		    return jsonResult(res.body);
@@ -780,7 +780,7 @@ class RoseAPI {
 	if (!__JSON) return {}
 	try {
 	    const jsonObj = JSON.parse(__JSON);
-	    this.debug && console.log(`__JSON: ${JSON.stringify(jsonObj, null, 2)}`);
+	    //this.debug && console.log(`__JSON: ${JSON.stringify(jsonObj, null, 2)}`);
 	    return jsonObj;
 	} catch (err) {
 	    return {};
@@ -899,13 +899,15 @@ class RoseAPI {
     }
 
     /**
-     * This method returns a zip-file binary containing the generated
-     * code of an connection instance.  The uuid given must be one of
-     * an connection instance object. The method triggers the run of
-     * the code generation on the given instance and returns the
-     * entire folder structure in the zip-binary.
-     * @param {string} uuid - the uuid of the connection _instance_
-     * object
+     * This method returns a zip-file binary containing the either the
+     * code (template) of a connection class or the generated code of
+     * an connection instance depending on which type of connection
+     * the given uuid refers to.  The uuid given must be one of an
+     * connection instance object. The method triggers the run of the
+     * code generation on the given instance and returns the entire
+     * folder structure in the zip-binary.
+     * @param {string} classOrInstanceUuid - the uuid of the
+     * connection class or instance object
      * @param {function} callback - the callback function; in this
      * case the response is a binary representing the content of a
      * zip-file.
@@ -913,30 +915,65 @@ class RoseAPI {
      * @global
      * @alias getCodeZip
      */
-    api_getCodeZip(uuid, callback) {
+    api_getCodeZip(classOrInstanceUuid, callback) {
 	const cb = ensureFunction(callback);
-	this._getConnectionClassForInstanceUuid(uuid, (err, classObject) => {
-	    if (err) {
-		return cb(err);
-	    }
-	    const { UUID } = classObject;
+
+	const _doGetCodeZip = (classObject, instanceUuid) => {
+	    const { UUID, NAME, ISLOCAL } = classObject;
+	    //console.log(JSON.stringify(classObject, null, 2));
+	    const isLocal = !!ISLOCAL;
 	    const gitUrl = classObject['Git Clone URL'];
 	    const gitSubfolder = classObject['Git Subfolder'];
-	    if (!gitUrl) {
+	    if (!isLocal && !gitUrl) {
 		return cb(`no gitUrl found in class object with uuid ${UUID}`);
 	    }
 	    const url = 'git/createzip';
-	    const json = { instanceUuid: uuid, gitUrl, gitSubfolder };
+	    const json = { instanceUuid, gitUrl, gitSubfolder, uuid: UUID, name: NAME, isLocal };
 	    const method = 'POST';
 	    const requestObj = { method, json };
 	    const returnResultAsIs = true;
 	    const dontProcessRequestObject = true;
 	    const options = { returnResultAsIs, dontProcessRequestObject };
 	    this._apiCall(url, requestObj, cb, options);
-	})
+	};
+	
+	this.api_getConnection(classOrInstanceUuid, (err, obj) => {
+	    if (err) {
+		return cb(err);
+	    }
+	    if (obj.CLASS_UUID) {
+		let instanceUuid = obj.UUID
+		this._getConnectionClassForInstanceUuid(instanceUuid, (err, classObject) => {
+		    if (err) {
+			return cb(err);
+		    }
+		    _doGetCodeZip(classObject, instanceUuid);
+		});
+	    } else {
+		let classObject = obj;
+		let instanceUuid = null;
+		_doGetCodeZip(classObject, instanceUuid);
+	    }
+	});
+
     }
 
-    api_downloadInstanceCode(uuid, targetFolder, optionsOrCallback, callback) {
+    /**
+     * This method is used to download the code part of a connection
+     * object into a local folder.  In case of a connection class it
+     * downloads the code template file tree, in case of a connection
+     * instance, it runs the code generation and downloads the
+     * resulting generated code.
+     * @param {string} uuid - the uuid of the connection object, which
+     * can be either a class or an instance.
+     * @param {string} targetFolder - the local folder into which the
+     * code is downloaded.
+     * @param {callback} callback - callback called on completion of
+     * the operation.
+     * @global
+     * @alias downloadCode
+     */
+    api_downloadCode(uuid, targetFolder, optionsOrCallback, callback) {
 	const cb = (typeof optionsOrCallback === 'function')
 	      ? optionsOrCallback : ensureFunction(callback);
 	const options = (typeof optionsOrCallback === 'object') ? optionsOrCallback : {};

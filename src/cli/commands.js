@@ -5,6 +5,7 @@
  */
 
 const fs = require('fs');
+const path = require('path');
 
 const { cliInfo, cliError, cliWarn, editFile, editString } = require('./cli-utils');
 const { authenticatedRose } = require('./cli-auth');
@@ -16,7 +17,7 @@ class Commands {
 
     constructor(roseOptions = {}) {
 	this.rose = authenticatedRose(roseOptions);
-	this.defaultColumns = ['NAME', 'MODIFIED_TIMESTAMP'];
+	this.defaultColumns = ['NAME', 'UUID', 'MODIFIED_TIMESTAMP'];
     }
 
     cli_user(options = {}) {
@@ -30,6 +31,14 @@ class Commands {
 		cliInfo(userInfo.email);
 	    }
 	})
+    }
+
+    _checkForRoseInfoInFolder(name) {
+	const fullpath = path.resolve(name);
+	const rfolder = new RoseFolder(this.rose);
+	const pathInfo = rfolder.info[fullpath];
+	//console.log(`pathInfo for ${fullpath}: ${JSON.stringify(pathInfo, null, 2)}`);
+	return pathInfo;
     }
     
     cli_list(entity, namePattern = null, options = {}) {
@@ -48,7 +57,7 @@ class Commands {
 	    let columns = this.defaultColumns;
 	    if (typeof options.fields === 'string') {
 		columns = options.fields.split(/\s*,\s*/);
-		console.log(`columns: ${columns}`)
+		//console.log(`columns: ${columns}`)
 	    }
 	    const table = new Table({
 		head: columns,
@@ -69,14 +78,34 @@ class Commands {
 	}
     }
 
+    cli_folderInfo() {
+	const rfolder = new RoseFolder(this.rose);
+	const info = rfolder.info;
+	const table = new Table({
+	    head: ['Folder', 'Name', 'Type', 'UUID'],
+	    chars: _plainChars
+	});
+	Object.keys(info).forEach(fullpath => {
+	    let rpath = path.relative(fs.realpathSync('.'), fullpath);
+	    let finfo = info[fullpath];
+	    let type = finfo.isClass ? "class" : "instance";
+	    let name = finfo.object ? finfo.object.NAME : '?';
+	    let uuid = finfo.object ? finfo.object.UUID : '?';
+	    table.push([rpath, name, type, uuid]);
+	});
+	cliInfo(table.toString());
+    }
+
     cli_scenarios(namePattern = null, options = {}) {
     }
 
-    cli_init(options = {}) {
+    cli_initScenario(options = {}) {
+	const rfolder = new RoseFolder(this.rose);
+	rfolder.initConnectionInteractively(true);
     }
 
     cli_edit(name, options = {}) {
-	this.rose.findOneConnection({ NAME: { "$like": name } }, (err, obj) => {
+	const _doEdit = (err, obj) => {
 	    if (err) return cliError(err);
 	    const { UUID, NAME } = obj;
 	    const configJson = this.rose.getConfigJsonFromObject(obj);
@@ -101,7 +130,13 @@ class Commands {
 		    return;
 		}
 	    });
-	})
+	}
+	const pathInfo = this._checkForRoseInfoInFolder(name);
+	if (pathInfo && pathInfo.object && pathInfo.object.UUID) {
+	    this.rose.getConnection(pathInfo.object.UUID, _doEdit);
+	} else {
+	    this.rose.findOneConnection({ NAME: { "$like": name } }, _doEdit);
+	}
     }
 
 }
