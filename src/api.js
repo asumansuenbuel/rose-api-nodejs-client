@@ -259,6 +259,74 @@ class RoseAPI {
     // -----------------------------------------------------------------------------
 
     /**
+     * returns the RoseStudio server url that is used for api calls
+     * @global
+     * @alias getServerUrl
+     */
+    api_getServerUrl() {
+	return this.apiUrl;
+    }
+
+    /**
+     * Returns the RoseStudio page url that corresponds to the given object
+     * @param {entityName} entityName - the entity name of the object
+     * @param {string} uuid - the uuid of the object
+     * @returns {string} the RoseStudio url for this object
+     * @global
+     * @alias getRoseStudioEntityPageUrl
+     */
+    api_getRoseStudioEntityPageUrl(entityName, uuid) {
+	const ENTITY = entityName.toUpperCase();
+	const urlElements = [this.apiUrl, '#'];
+	if (ENTITY.startsWith("CONNECTION")) {
+	    urlElements.push('connectionobject', 'CONNECTIONS');
+	} else {
+	    urlElements.push('databaseobject', ENTITY);
+	}
+	urlElements.push(uuid);
+	const url = urlElements.join('/');
+	return url;
+    }
+
+    /**
+     * Returns the RoseStudio page url that corresponds to the given object
+     * @param {string} uuid - the uuid of the object
+     * @returns {string} the RoseStudio url for this object
+     * @see getRoseStudioEntityPageUrl
+     * @global
+     * @alias getRoseStudioBackendSystemPageUrl
+     */
+    api_getRoseStudioBackendSystemtPageUrl(uuid) {
+	return this.api_getRoseStudioEntityPageUrl('backend_systems', uuid);
+    }
+    
+    /**
+     * Returns the RoseStudio page url that corresponds to the given object
+     * @param {string} uuid - the uuid of the object
+     * @returns {string} the RoseStudio url for this object
+     * @see getRoseStudioEntityPageUrl
+     * @global
+     * @alias getRoseStudioRobotPageUrl
+     */
+    api_getRoseStudioRobotPageUrl(uuid) {
+	return this.api_getRoseStudioEntityPageUrl('robots', uuid);
+    }
+    
+    /**
+     * Returns the RoseStudio page url that corresponds to the given object
+     * @param {string} uuid - the uuid of the object
+     * @returns {string} the RoseStudio url for this object
+     * @see getRoseStudioEntityPageUrl
+     * @global
+     * @alias getRoseStudioConnectionPageUrl
+     */
+    api_getRoseStudioConnectionPageUrl(uuid) {
+	return this.api_getRoseStudioEntityPageUrl('connections', uuid);
+    }
+    
+    // -----------------------------------------------------------------------------
+
+    /**
      * retrieves the object representing the currently authenticated user
      * @param {callback} callback
      * @global
@@ -364,6 +432,8 @@ class RoseAPI {
     api_getConnection(uuid, callback) {
 	this.api_getEntity('connections', uuid, callback);
     }
+
+    // -----------------------------------------------------------------------------
 
     // -----------------------------------------------------------------------------
 
@@ -492,6 +562,11 @@ class RoseAPI {
     }
 
     /**
+     * Returns all the connection instances of the connection/scenario
+     * class referred to by the given uuid.
+     * @param {string} uuid - uuid of a connection class
+     * @param {callback} callback - the callback function for
+     * receiving the instance objects
      * @global
      * @alias getAllConnectionInstances
      */
@@ -501,6 +576,13 @@ class RoseAPI {
     }
 
     /**
+     * Returns all matching connection instances of the connection/scenario
+     * class referred to by the given uuid.
+     * @param {string} uuid - uuid of a connection class
+     * @param {object} queryTerm - queryTerm for restricting which
+     * instance objects are retrieved
+     * @param {callback} callback - the callback function for
+     * receiving the instance objects
      * @global
      * @alias findConnectionInstances
      */
@@ -812,7 +894,7 @@ class RoseAPI {
      */
     api_getConfigJsonFromObject(obj) {
 	const jsonObj = this._getConnectionJSONFromObject(obj);
-	return jsonObj.configJsonObj;
+	return jsonObj.configJsonObj || {};
     }
 
     /**
@@ -977,7 +1059,7 @@ class RoseAPI {
 	const cb = (typeof optionsOrCallback === 'function')
 	      ? optionsOrCallback : ensureFunction(callback);
 	const options = (typeof optionsOrCallback === 'object') ? optionsOrCallback : {};
-	const { dryRun, debug } = options;
+	const { dryRun, debug, deleteFilter } = options;
 	this.api_getCodeZip(uuid, (err, buf) => {
 	    if (err) {
 		return cb(err);
@@ -986,7 +1068,7 @@ class RoseAPI {
 		if (err) {
 		    return cb(err);
 		}
-		const options = { dryRun, debug, clearFolder: true };
+		const options = { dryRun, debug, clearFolder: true, deleteFilter };
 		zipFile.extractToFolder(targetFolder, options, err => {
 		    if (err) {
 			return cb(err);

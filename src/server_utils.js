@@ -181,12 +181,13 @@ const getFolderTreeJson = (path, options) => {
  * used directly as argument to then() or PromiseChain (see below).
  */
 const removeFolderRecursively = (path, options) => {
-    const { removeFolderItself, dryRun, debug } = options || {};
+    const { removeFolderItself, dryRun, debug, deleteFilter } = options || {};
     debug && console.log(ingreen(`removeFolderRecursively("${path}")...`))
     if (!lstatSync(path).isDirectory()) {
 	return new Promise((resolve, reject) => reject(`${path} is not a directory`));
     }
-    const files = readdirSync(path);
+    const dfun = (typeof deleteFilter === 'function') ? deleteFilter : (() => true);
+    const files = readdirSync(path).filter(dfun);
     debug && console.log(`files: ${files}`);
     const promises = files.map(filename => {
 	let filePath = join(path, filename);

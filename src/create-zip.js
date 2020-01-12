@@ -37,8 +37,8 @@ class ZipFile {
 	    return stats.mode
 	}
 	let unixPermissions = _getUnixFilePermission(path)
-	console.log(`create-zip: adding file "${ingreen(path)}" `
-		    + `(mode ${unixPermissions}) to zip file as "${ingreen(name)}"...`)
+	//console.log(`create-zip: adding file "${ingreen(path)}" `
+	//	    + `(mode ${unixPermissions}) to zip file as "${ingreen(name)}"...`)
 	let data = readFileSync(path)
 	this.zip.file(name, data, { unixPermissions } )
     }
@@ -125,7 +125,7 @@ class ZipFile {
 	const createFolderPromises = []
 	const createFilePromises = [];
 	const { zip } = this;
-	const { dryRun, clearFolder, debug } = options || {};
+	const { dryRun, clearFolder, debug, deleteFilter } = options || {};
 	debug && console.log(inyellow(`extractToFolder: dryRun=${!!dryRun}, clearFolder=${!!clearFolder}`));
 	Object.keys(zip.files).forEach(filename => {
 	    let zfile = zip.file(filename);
@@ -182,7 +182,7 @@ class ZipFile {
 
 	// prepend the removeFolder operations if specified
 	const clearFolderPromise = clearFolder
-	      ? removeFolderRecursively(rootFolder, { dryRun, debug })
+	      ? removeFolderRecursively(rootFolder, { dryRun, debug, deleteFilter })
 	      : Promise.resolve(null);
 
 	const promiseChain = [clearFolderPromise, ...createFolderPromises, ...createFilePromises];

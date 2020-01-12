@@ -127,7 +127,19 @@ const findAllFiles = (fname, dir) => {
     //console.log(res);
     return res;
 }
-    
+
+const stringIsUuid = str => {
+    if (typeof str !== 'string') return false;
+    let s = str.toLowerCase();
+    return s.replace(/[0-9a-f]/g,'') === '----';
+}
+
+const allFilenamesInFolder = folder => {
+    if (!fs.lstatSync(folder).isDirectory()) {
+	return [];
+    }
+    return fs.readdirSync(folder);
+}
 
 module.exports = {
     cliError,
@@ -136,5 +148,7 @@ module.exports = {
     editFile,
     editString,
     getUniqueNameListAndHash,
-    findAllFiles
+    findAllFiles,
+    stringIsUuid,
+    allFilenamesInFolder
 }

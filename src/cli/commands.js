@@ -7,7 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { cliInfo, cliError, cliWarn, editFile, editString } = require('./cli-utils');
+const { cliInfo, cliError, cliWarn, editFile, editString, stringIsUuid } = require('./cli-utils');
 const { authenticatedRose } = require('./cli-auth');
 const { RoseFolder } = require('./rose-folder');
 
@@ -42,7 +42,7 @@ class Commands {
     }
     
     cli_list(entity, namePattern = null, options = {}) {
-	const { getEntities, findEntities } = this.rose;
+	const { getEntity, getEntities, findEntities } = this.rose;
 	const entityName = _getEntityName(entity);
 	const _sortByName = (obj1, obj2) => {
 	    let n1 = obj1.NAME;
@@ -53,6 +53,11 @@ class Commands {
 	    if (err) return cliError(err);
 	    if (options.json) {
 		return cliInfo(records);
+	    }
+	    if (options.uuid) {
+		let uuids = records.map(({ UUID }) => UUID);
+		cliInfo(uuids.join(','));
+		return;
 	    }
 	    let columns = this.defaultColumns;
 	    if (typeof options.fields === 'string') {
@@ -71,18 +76,30 @@ class Commands {
 	    //cliInfo(records.map(({NAME}) => NAME).sort().join('\n'));
 	};
 	if (typeof namePattern === 'string') {
-	    let qterm = _getQueryTermFromPattern('NAME', namePattern);
-	    findEntities(entityName, qterm, showRecords);
+	    if (stringIsUuid(namePattern)) {
+		let uuid = namePattern;
+		getEntity(entityName, uuid, (err, obj) => showRecords(err, [obj]));
+	    } else {
+		let qterm = _getQueryTermFromPattern('NAME', namePattern);
+		findEntities(entityName, qterm, showRecords);
+	    }
 	} else {
 	    getEntities(entityName, showRecords);
 	}
     }
 
-    cli_folderInfo() {
+    cli_info(folder, options = {}) {
 	const rfolder = new RoseFolder(this.rose);
+	if (folder) {
+	    const folderInfo = rfolder.getFolderInfo(folder);
+	    console.log(JSON.stringify(folderInfo, null, 2));
+	}
 	const info = rfolder.info;
+	const head = options.link
+	      ? ['Folder', 'RoseStudio URL']
+	      : ['Folder', 'Name in RoseStudio', 'Type', 'UUID'];
 	const table = new Table({
-	    head: ['Folder', 'Name', 'Type', 'UUID'],
+	    head,
 	    chars: _plainChars
 	});
 	Object.keys(info).forEach(fullpath => {
@@ -91,7 +108,9 @@ class Commands {
 	    let type = finfo.isClass ? "class" : "instance";
 	    let name = finfo.object ? finfo.object.NAME : '?';
 	    let uuid = finfo.object ? finfo.object.UUID : '?';
-	    table.push([rpath, name, type, uuid]);
+	    let url = this.rose.getRoseStudioConnectionPageUrl(uuid);
+	    let row = options.link ? [rpath, url] : [rpath, name, type, uuid];
+	    table.push(row);
 	});
 	cliInfo(table.toString());
     }
@@ -102,6 +121,16 @@ class Commands {
     cli_initScenario(options = {}) {
 	const rfolder = new RoseFolder(this.rose);
 	rfolder.initConnectionInteractively(true);
+    }
+
+    cli_initInstance(classFolder, options = {}) {
+	const rfolder = new RoseFolder(this.rose);
+	rfolder.initInstanceInteractively(classFolder);
+    }
+
+    cli_updateInstance(instanceFolder, options = {}) {
+	const rfolder = new RoseFolder(this.rose);
+	rfolder.updateInstanceFolder(instanceFolder, options);
     }
 
     cli_edit(name, options = {}) {
@@ -148,6 +177,7 @@ const _getEntityName = entity => {
     if (entityName.startsWith('connection') || entityName.startsWith('scenario')) {
 	return 'connections';
     }
+    throw `Unknown entity name "${entity}"; has to be one of 'robots', 'backend_systems', or 'connections'.`
     return entity;
 };
 
@@ -166,7 +196,7 @@ const _getRoseApiOptionsFromEnv = () => {
     const { ROSE_SERVER_URL } = process.env
     if (typeof ROSE_SERVER_URL === 'string') {
 	options.apiUrl = ROSE_SERVER_URL;
-	options.debug = true;
+	options.debug = false;
     }
     return options;
 }
