@@ -24,9 +24,26 @@ const cliError = errmsg => {
     console.error(inred(`*** ${msg}`));
 }
 
-const cliInfo = msg => console.log(_output(msg));
+const cliInfo = (msg, nonewline) => {
+    let out = _output(msg);
+    if (!nonewline) {
+	out += '\n';
+    }
+    process.stdout.write(out);
+}
 
 const cliWarn = msg => console.log(_output(inyellow(msg)));
+
+const cliStartProgress = () => {
+    const timer = setInterval(() => cliInfo('.', true), 1000);
+    return timer;
+}
+
+const cliStopProgress = timer => {
+    try {
+	clearTimeout(timer);
+    } catch (err) {}
+}
 
 /**
  * invoke the system text editor (vi or $EDITOR) on the given filename
@@ -145,6 +162,8 @@ module.exports = {
     cliError,
     cliInfo,
     cliWarn,
+    cliStartProgress,
+    cliStopProgress,
     editFile,
     editString,
     getUniqueNameListAndHash,

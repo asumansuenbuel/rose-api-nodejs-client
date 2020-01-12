@@ -9,8 +9,11 @@ const program = require('commander');
 const { login, logout } = require('./src/cli/cli-auth');
 const commands = require('./src/cli/commands')
 
+const help = require('./src/cli/help-texts')
+
 program
-    .name('rose');
+    .name('rose')
+    .description(help.commands.rose)
 
 program
     .command('login')
@@ -31,6 +34,11 @@ program
     .description('shows info about the user currently authenticated for the Rose command line interface')
 
 program
+    .command('server')
+    .action(commands.server)
+    .description('show the RoseStudio server url')
+
+program
     .command('ls <entity> [name-pattern|uuid]')
     .option('-j, --json', 'output in json format', false)
     .option('-u, --uuid',
@@ -39,15 +47,13 @@ program
 	    false)
     .option('-f, --fields <comma-separated-fields>',null)
     .action(commands.list)
-    .description('list the entities (robots, backend_systems, connections) '
-		 + 'whose name matches the name-pattern. '
-		 + 'Alternatively, an object uuid can be provided in which case'
-		 + 'information about the object with that uuid is shown.')
+    .description(help.commands.ls)
 
 program
-    .command('edit-config <class-or-instance-name>')
+    .command('edit-config <scenario-folder>')
+    .option('-n, --no-update', help.commandOptions.editConfig.noUpdate)
     .action(commands.edit)
-    .description('command to edit config of the class or an instance')
+    .description(help.commands.editConfig)
 
 program
     .command('init-scenario')
@@ -67,20 +73,16 @@ program
     .option('-n, --no-class-update', 'By default, the code from the corresponding scenario class is '
 	    + 'first uploaded to the Rose server. Specifying this option omits that step')
     .action(commands.updateInstance)
-    .description('runs code generation on the rose server and downloads the code to the folder '
-		 + 'which must be one that is connected to a scenarion instance.'
-		 + 'If the corresponding scenario class is connected to a local sub-folder then its '
-		 + 'code is uploaded to the server prior to code-generation and download of the '
-		 + 'instance code')
+    .description(help.commands.updateInstance)
 
 program
     .command('info [folder]')
     .option('-l, --link', 'include the link to the object\'s RoseStudio page for each entry', false)
     .action(commands.info)
-    .description('get information about which directories are connected with which '
-		 + 'scenario class and instances. If the folder argument is given, '
-		 + 'only information related to that folder is shown')
+    .description(help.commands.info)
 
 program.parse(process.argv);
 
-
+if (process.argv.length === 2) {
+  program.help();
+}

@@ -9,7 +9,8 @@ const path = require('path');
 const inquirer = require('inquirer');
 
 const { cliInfo, cliWarn, cliError, getUniqueNameListAndHash,
-	findAllFiles, stringIsUuid, allFilenamesInFolder } = require('./cli-utils');
+	findAllFiles, stringIsUuid, allFilenamesInFolder,
+	cliStartProgress, cliStopProgress } = require('./cli-utils');
 const { mkdirRecursiveSync } = require('../server_utils');
 
 const roseInitFilename = '.rose';
@@ -277,9 +278,11 @@ class RoseFolder {
 			    if (!UUID) {
 				throw "something went wrong, UUID is missing from object"
 			    }
-			    cliInfo(`uploading source code to RoseStudio...`);
+			    cliInfo(`uploading source code to RoseStudio...`, true);
+			    const ptimer = cliStopProgress();
 			    return new Promise((resolve, reject) => {
 				this.rose.uploadCodeTemplate(UUID, localFolder, (err, result) => {
+				    cliStopProgress(ptimer);
 				    if (err) return reject(err);
 				    cliInfo('done');
 				    resolve();
@@ -544,15 +547,16 @@ class RoseFolder {
 	}
 	//console.log(`found instance object uuid in folder ${folder}`);
 	return new Promise((resolve, reject) => {
-	    cliInfo('downloading the instance code...');
+	    cliInfo('downloading the instance code...', true);
+	    const ptimer = cliStartProgress();
 	    const deleteFilter = filename => {
 		if (filename === roseInitFilename) {
-		    console.log('deleteFilter detected roseInitFilename');
 		    return false;
 		}
 		return true
 	    };
 	    this.rose.downloadCode(uuid, folder, { deleteFilter }, (err, result) => {
+		cliStopProgress(ptimer);
 		if (err) {
 		    return reject(err);
 		}

@@ -7,7 +7,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const { cliInfo, cliError, cliWarn, editFile, editString, stringIsUuid } = require('./cli-utils');
+const { cliInfo, cliError, cliWarn, cliStartProgress, cliStopProgress,
+	editFile, editString, stringIsUuid } = require('./cli-utils');
 const { authenticatedRose } = require('./cli-auth');
 const { RoseFolder } = require('./rose-folder');
 
@@ -31,6 +32,10 @@ class Commands {
 		cliInfo(userInfo.email);
 	    }
 	})
+    }
+
+    cli_server() {
+	cliInfo(this.rose.getServerUrl());
     }
 
     _checkForRoseInfoInFolder(name) {
@@ -130,13 +135,15 @@ class Commands {
 
     cli_updateInstance(instanceFolder, options = {}) {
 	const rfolder = new RoseFolder(this.rose);
-	rfolder.updateInstanceFolder(instanceFolder, options);
+	return rfolder.updateInstanceFolder(instanceFolder, options);
     }
 
     cli_edit(name, options = {}) {
+	const pathInfo = this._checkForRoseInfoInFolder(name);
+
 	const _doEdit = (err, obj) => {
 	    if (err) return cliError(err);
-	    const { UUID, NAME } = obj;
+	    const { UUID, CLASS_UUID, NAME } = obj;
 	    const configJson = this.rose.getConfigJsonFromObject(obj);
 	    const cstr = JSON.stringify(configJson, null, 2);
 	    
@@ -145,14 +152,32 @@ class Commands {
 		    cliInfo('no changes; nothing done');
 		    return;
 		}
-		//console.log(newContent);
 		try {
 		    const newConfigJson = JSON.parse(newContent);
+		    cliInfo(`updating config for "${NAME}"...`, true);
+		    const ptimer = cliStartProgress();
 		    this.rose.updateConnectionConfigJson(UUID, newConfigJson, (err, obj) => {
+			cliStopProgress(ptimer);
 			if (err) {
 			    return cliError(err);
 			}
-			cliInfo(`config-json successfully updated on server for "${NAME}".`);
+			//cliInfo(`config-json successfully updated on server for "${NAME}".`);
+			cliInfo('done.');
+			if (pathInfo && CLASS_UUID) {
+			    if (options.update) {
+				//cliInfo('updating instance folder...');
+				this.cli_updateInstance(name)
+				    .then(() => {
+					//cliInfo('done.');
+				    })
+				    .catch(cliError)
+			    } else {
+				cliInfo(`instance folder hasn't been updated; please run `
+					+ `"rose update ${NAME}" to do that.`);
+			    }
+			} else {
+			    //cliInfo('done.');
+			}
 		    });
 		} catch (err) {
 		    cliError(`config must be valid JSON: ${err}`);
@@ -160,7 +185,7 @@ class Commands {
 		}
 	    });
 	}
-	const pathInfo = this._checkForRoseInfoInFolder(name);
+
 	if (pathInfo && pathInfo.object && pathInfo.object.UUID) {
 	    this.rose.getConnection(pathInfo.object.UUID, _doEdit);
 	} else {
