@@ -8,9 +8,11 @@ const fs = require('fs');
 const path = require('path');
 
 const { cliInfo, cliError, cliWarn, cliStartProgress, cliStopProgress,
-	editFile, editString, stringIsUuid } = require('./cli-utils');
+	editFile, editString, stringIsUuid, openUrlInBrowser } = require('./cli-utils');
 const { authenticatedRose } = require('./cli-auth');
 const { RoseFolder } = require('./rose-folder');
+
+const { green, bold } = require('chalk');
 
 const Table = require('cli-table');
 
@@ -45,6 +47,43 @@ class Commands {
 	//console.log(`pathInfo for ${fullpath}: ${JSON.stringify(pathInfo, null, 2)}`);
 	return pathInfo;
     }
+
+    _findInAnyEntity(namePattern, callback) {
+	const { findEntities } = this.rose;
+	let qterm = _getQueryTermFromPattern('NAME', namePattern);
+	var entityNames = ['connections', 'robots', 'backend_systems'];
+	const _findInNextEntity = () => {
+	    if (entityNames.length === 0) {
+		return callback(`no entity matching "${namePattern}" found.`);
+	    }
+	    const entityName = entityNames.shift();
+	    //console.log(`finding ${namePattern} in ${entityName}...`)
+	    findEntities(entityName, qterm, (err, obj) => {
+		if (err) {
+		    //console.log(`not found: ${err}`);
+		    return _findInNextEntity();
+		}
+		callback(null, obj, entityName);
+	    });
+	}
+	_findInNextEntity();
+    }
+
+    cli_open(namePattern, options = {}) {
+	this._findInAnyEntity(namePattern, (err, records, entity) => {
+	    if (err) {
+		return cliError(err);
+	    }
+	    if (records.length === 0) {
+		cliError('nothing to open...');
+	    }
+	    let obj = records[0];
+	    const url = this.rose.getRoseStudioEntityPageUrl(entity, obj.UUID);
+	    cliInfo(`opening ${url} for ${entity} object "${obj.NAME}"...`, true);
+	    openUrlInBrowser(url);
+	    cliInfo('done.');
+	});
+    }	
     
     cli_list(entity, namePattern = null, options = {}) {
 	const { getEntity, getEntities, findEntities } = this.rose;
@@ -56,6 +95,9 @@ class Commands {
 	}
 	const showRecords = (err, records) => {
 	    if (err) return cliError(err);
+	    if (!Array.isArray(records)) {
+		records = [records];
+	    }
 	    if (options.json) {
 		return cliInfo(records);
 	    }
@@ -69,6 +111,10 @@ class Commands {
 		columns = options.fields.split(/\s*,\s*/);
 		//console.log(`columns: ${columns}`)
 	    }
+	    if (records.length === 0) {
+		cliInfo('no matching records found.');
+		return;
+	    }
 	    const table = new Table({
 		head: columns,
 		chars: _plainChars
@@ -80,52 +126,158 @@ class Commands {
 	    cliInfo(table.toString());
 	    //cliInfo(records.map(({NAME}) => NAME).sort().join('\n'));
 	};
+	const _maybeShowInstances = (err, records) => {
+	    if (err) return cliError(err);
+	    if (!Array.isArray(records)) {
+		records = [records];
+	    }
+	    if (entity === 'instances') {
+		if (records.length !== 1) {
+		    return cliError(`"${namePattern}" matched ${records.length} scenario classes; `
+				    + `in order to display scenario instances the name pattern `
+				    + `must resolve to exactly one scenario class.`);
+		}
+		let classUuid = records[0].UUID;
+		let className = records[0].NAME;
+		let qterm = { CLASS_UUID: classUuid };
+		if (!options.uuid) {
+		    cliInfo(bold(` Instances of scenario class "${className}":`))
+		}
+		findEntities(entityName, qterm, showRecords);
+	    } else {
+		return showRecords(null, records)
+	    }
+	}
 	if (typeof namePattern === 'string') {
 	    if (stringIsUuid(namePattern)) {
 		let uuid = namePattern;
-		getEntity(entityName, uuid, (err, obj) => showRecords(err, [obj]));
+		getEntity(entityName, uuid, _maybeShowInstances);
 	    } else {
 		let qterm = _getQueryTermFromPattern('NAME', namePattern);
-		findEntities(entityName, qterm, showRecords);
+		if (entityName === 'connections') qterm.CLASS_UUID = "$isnull";
+		findEntities(entityName, qterm, _maybeShowInstances);
 	    }
 	} else {
-	    getEntities(entityName, showRecords);
+	    if (entity === 'instances') {
+		return cliError('please specify a name (pattern) for the scenario class')
+	    }
+	    if (entityName === 'connections') {
+		let qterm = { CLASS_UUID: "$isnull" };
+		findEntities(entityName, qterm, showRecords);
+	    } else {
+		getEntities(entityName, showRecords);
+	    }
 	}
     }
 
     cli_info(folder, options = {}) {
 	const rfolder = new RoseFolder(this.rose);
-	if (folder) {
-	    const folderInfo = rfolder.getFolderInfo(folder);
-	    console.log(JSON.stringify(folderInfo, null, 2));
-	}
 	const info = rfolder.info;
-	const head = options.link
-	      ? ['Folder', 'RoseStudio URL']
-	      : ['Folder', 'Name in RoseStudio', 'Type', 'UUID'];
-	const table = new Table({
-	    head,
-	    chars: _plainChars
-	});
-	Object.keys(info).forEach(fullpath => {
-	    let rpath = path.relative(fs.realpathSync('.'), fullpath);
-	    let finfo = info[fullpath];
-	    let type = finfo.isClass ? "class" : "instance";
-	    let name = finfo.object ? finfo.object.NAME : '?';
-	    let uuid = finfo.object ? finfo.object.UUID : '?';
-	    let url = this.rose.getRoseStudioConnectionPageUrl(uuid);
-	    let row = options.link ? [rpath, url] : [rpath, name, type, uuid];
-	    table.push(row);
-	});
-	cliInfo(table.toString());
+
+	const NOMARKS = '///NOMARKS///';
+	
+	const showInfo = (infoKeys, markInstances, markClasses) => {
+	    const head = options.link
+		  ? ['Folder', 'RoseStudio URL']
+		  : ['Folder', 'Name in RoseStudio', 'Type', 'UUID'];
+	    const table = new Table({
+		head,
+		chars: _plainChars
+	    });
+	    const classMark = ' ┌── '
+	    const instanceMark = ' └── ';
+	    let addMarks = true;
+	    infoKeys.forEach(fullpath => {
+		if (fullpath === NOMARKS) {
+		    addMarks = false;
+		    return;
+		}
+		let rpath = path.relative(fs.realpathSync('.'), fullpath);
+		let finfo = info[fullpath];
+		let type = finfo.isClass ? "class" : "instance";
+		let name = finfo.object ? finfo.object.NAME : '?';
+		let prefix = '';
+		if (addMarks && !finfo.isClass) {
+		    prefix = markInstances ? instanceMark : markClasses ? classMark : '';
+		}
+		let uuid = finfo.object ? finfo.object.UUID : '?';
+		let url = this.rose.getRoseStudioConnectionPageUrl(uuid);
+		let row = options.link ? [rpath, url] : [rpath, name, type, uuid];
+		row[0] = prefix + row[0]
+		table.push(row);
+	    });
+	    cliInfo(table.toString());
+	}
+
+	const getFolderKeys = folder => {
+	    let finfo = rfolder.getFolderInfo(folder);
+	    if (!finfo || !finfo.object) {
+		throw(`folder "${folder}" doesn't seem to be connected to any RoseStudio scenario.`);
+		//return;
+	    }
+	    const folderKey = rfolder.getFolderInfoKey(folder);
+	    let infoKeys;
+	    let markInstances = false,
+		markClasses = false;
+	    if (finfo.isClass) {
+		markInstances = true;
+		let instancesKeys = rfolder.getAllInstanceFolderKeys(folder);
+		infoKeys = [folderKey, ...instancesKeys];
+	    } else {
+		markClasses = true;
+		let classKey = rfolder.getClassFolderKey(folder);
+		infoKeys = [folderKey, classKey];
+	    }
+	    //showInfo(infoKeys, markInstances, markClasses);
+	    return { infoKeys, markInstances, markClasses };
+	}
+
+	if (folder) {
+	    try {
+		let { infoKeys, markInstances, markClasses } = getFolderKeys(folder);
+		showInfo(infoKeys, markInstances, markClasses);
+	    } catch (err) {
+		return cliError(err);
+	    }
+	    return;
+	}
+
+	const getSortedKeys = () => {
+	    let keys = [];
+	    let classKeyUuidMap = rfolder.getAllClassKeysAndUuids();
+	    let classKeys = Object.keys(classKeyUuidMap);
+	    classKeys.forEach(classKey => {
+		let uuid = classKeyUuidMap[classKey];
+		// add the class key:
+		keys.push(classKey);
+		// add all the keys of the instances
+		keys.push(...rfolder.getAllInstanceFolderKeys(uuid));
+	    });
+	    let allKeys = Object.keys(rfolder.info);
+	    allKeys.forEach(key => {
+		if (keys.includes(key)) return;
+		console.log(`adding 'orphaned' key ${key}...`)
+		keys.push(NOMARKS); // tell the output loop to stop adding marks
+		keys.push(key);
+	    });
+	    return keys;
+	};
+
+	showInfo(getSortedKeys(), true, false);
     }
 
     cli_scenarios(namePattern = null, options = {}) {
     }
 
-    cli_initScenario(options = {}) {
+    cli_initScenario(folder, options = {}) {
 	const rfolder = new RoseFolder(this.rose);
-	rfolder.initConnectionInteractively(true);
+	rfolder.initScenarioInteractively(folder, options);
+    }
+
+    cli_createScenario(folder, options = {}) {
+	const rfolder = new RoseFolder(this.rose);
+	options.create = true;
+	rfolder.initScenarioInteractively(folder, options);
     }
 
     cli_initInstance(classFolder, options = {}) {
@@ -136,6 +288,16 @@ class Commands {
     cli_updateInstance(instanceFolder, options = {}) {
 	const rfolder = new RoseFolder(this.rose);
 	return rfolder.updateInstanceFolder(instanceFolder, options);
+    }
+
+    cli_updateScenario(scenarioFolder, options = {}) {
+	const rfolder = new RoseFolder(this.rose);
+	return rfolder.updateScenarioFolder(scenarioFolder, options);
+    }
+
+    cli_updateScenarioOrInstance(folder, options = {}) {
+	const rfolder = new RoseFolder(this.rose);
+	return rfolder.updateScenarioOrInstance(folder, options);
     }
 
     cli_edit(name, options = {}) {
@@ -199,7 +361,9 @@ const _getEntityName = entity => {
     const entityName = entity.toLowerCase();
     if (entityName.startsWith('robot')) return 'robots';
     if (entityName.indexOf('system') >= 0) return 'backend_systems';
-    if (entityName.startsWith('connection') || entityName.startsWith('scenario')) {
+    if (entityName.startsWith('connection')
+	|| entityName.startsWith('scenario')
+	|| entityName === "instances") {
 	return 'connections';
     }
     throw `Unknown entity name "${entity}"; has to be one of 'robots', 'backend_systems', or 'connections'.`

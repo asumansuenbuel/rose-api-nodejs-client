@@ -10,7 +10,8 @@ const inquirer = require('inquirer');
 
 const { cliInfo, cliWarn, cliError, getUniqueNameListAndHash,
 	findAllFiles, stringIsUuid, allFilenamesInFolder,
-	cliStartProgress, cliStopProgress } = require('./cli-utils');
+	cliStartProgress, cliStopProgress, isValidFilename,
+	isRelativeToFolder } = require('./cli-utils');
 const { mkdirRecursiveSync } = require('../server_utils');
 
 const roseInitFilename = '.rose';
@@ -143,6 +144,66 @@ class RoseFolder {
 	    .then(answerObject => answerObject.result);
     }
 
+    _processFolderArgumentToInitScenario(folder) {
+	cliWarn(`processing folder argument ${folder}...`)
+	if (!folder) {
+	    // no folder argument passed to init-scenario
+	    return Promise.resolve(null);
+	}
+	const _process = () => {
+	    const finfo = this.getFolderInfo(folder);
+	    if (finfo) {
+		let msg = `Folder "${folder}" is already connected to a RoseStudio scenario.`;
+		return Promise.reject(msg);
+	    }
+	    if (!isValidFilename(folder, true)) {
+		let msg = `"${folder}" contains invalid characters for a folder.`;
+		return Promise.reject(msg);
+	    }
+	    if (!isRelativeToFolder(folder, '.')) {
+		let msg = `folder "${folder}" is not in the current working directory tree; `
+		    + `only folders under the current working directory can be used here.`;
+		return Promise.reject(msg);
+	    }
+	    if (fs.existsSync(folder)) {
+		//console.log(`${folder} exists.`);
+		if (!fs.lstatSync(folder).isDirectory()) {
+		    let msg = `"${folder}" exists and is not a directory.`
+		    return Promise.reject(msg);
+		}
+		return Promise.resolve(folder);
+	    } else {
+		let type = 'confirm',
+		    name = 'okToCreate',
+		    message = `Folder "${folder}" doesn't exist; do you want to create it?`;
+		return inquirer
+		    .prompt({ type, name, message })
+		    .then(({okToCreate}) => {
+			if (!okToCreate) {
+			    return Promise.reject('folder not created, exiting...');
+			}
+			cliInfo(`creating folder "${folder}"...`, true);
+			try {
+			    mkdirRecursiveSync(folder);
+			    cliInfo('done.');
+			} catch (err) {
+			    cliInfo('');
+			    let msg = `Something went wrong trying to create the folder: ${err}`;
+			    return Promise.reject(msg);
+			}
+			return folder;
+		    });
+	    }
+	}
+	
+	try {
+	    return _process();
+	} catch (err) {
+	    return Promise.reject(err);
+	}
+	//return Promise.resolve(folder);
+    }
+
     _writeFolderInfo(folder, isClass, object) {
 	const initFile = this.getInitFileInFolder(folder);
 	const json = { isClass, object };
@@ -150,8 +211,91 @@ class RoseFolder {
     }
 
     getFolderInfo(folder) {
-	let infoKey = path.resolve(folder);
+	let infoKey = this.getFolderInfoKey(folder); //path.resolve(folder);
 	return this.$info[infoKey];
+    }
+
+    getFolderInfoKey(folder) {
+	return path.resolve(folder);
+    }
+
+    getAllInstanceFolderKeys(folderOrUuid) {
+	let uuid;
+	let folder;
+	if (stringIsUuid(folderOrUuid)) {
+	    uuid = folderOrUuid;
+	} else {
+	    folder = folderOrUuid;
+	    const finfo = this.getFolderInfo(folder);
+	    if (!finfo || !finfo.object) {
+		cliError(`folder "${folder}" doesn't seem to be connected to any RoseStudio scenario.`);
+		return;
+	    }
+	    uuid = finfo.object.UUID;
+	}
+	const instances = [];
+	Object.keys(this.$info).forEach(key => {
+	    let finfo = this.$info[key];
+	    try {
+		let classUuid = finfo.object.CLASS_UUID;
+		if (classUuid === uuid) {
+		    instances.push(key);
+		}
+	    } catch (err) {}
+	});
+	return instances;
+    }
+
+    getFolderNameFromFolderKey(fullpath) {
+	return path.relative(fs.realpathSync('.'), fullpath);
+    }
+
+    getAllInstanceFolders(folderOrUuid) {
+	return this.getAllInstanceFolderKeys(folderOrUuid)
+	    .map(key => this.getFolderNameFromFolderKey(key))
+    }
+
+    getClassFolderKey(instanceFolder) {
+	const finfo = this.getFolderInfo(instanceFolder);
+	if (!finfo || !finfo.object) {
+	    cliError(`folder "${folder}" doesn't seem to be connected to any RoseStudio scenario.`);
+	    return;
+	}
+	const classUuid = finfo.object.CLASS_UUID;
+	if (!classUuid) {
+	    return null;
+	}
+	let classFolderKey = null;
+	Object.keys(this.$info).forEach(key => {
+	    if (classFolderKey) {
+		return;
+	    }
+	    let finfo = this.$info[key];
+	    try {
+		let uuid = finfo.object.UUID;
+		if (classUuid === uuid) {
+		    classFolderKey = key;
+		}
+	    } catch (err) {}
+	});
+	return classFolderKey;
+    }
+
+    /**
+     * returns a hash with keys being the keys of the class folders
+     * into the info object mapped to the UUID of the corresponding
+     * scenarion class
+     */
+    getAllClassKeysAndUuids() {
+	const classKeyUuidMap = {};
+	Object.keys(this.info).forEach(key => {
+	    let finfo = this.info[key];
+	    if (finfo && finfo.object && (!finfo.object.CLASS_UUID)) {
+		let uuid = finfo.object.UUID;
+		classKeyUuidMap[key] = uuid;
+	    }
+	});
+	return classKeyUuidMap;
     }
 
     /**
@@ -191,7 +335,8 @@ class RoseFolder {
 	    })
     }
 
-    initConnectionInteractively(isClass = true) {
+    initScenarioInteractively(folder, options = {}) {
+	const { create } = options;
 	const _inquireCreateOrInit = () => {
 	    let type = 'rawlist';
 	    let name = 'result';
@@ -207,7 +352,18 @@ class RoseFolder {
 		.prompt(question)
 		.then(answer => answer.result[0]);
 	};
-	_inquireCreateOrInit()
+	let folderParameter = null;
+	this._processFolderArgumentToInitScenario(folder)
+	    .then(fld => {
+		if (fld) {
+		    folderParameter = fld;
+		    return Promise.resolve("C");
+		}
+		if (options.create) {
+		    return Promise.resolve("C");
+		}
+		return _inquireCreateOrInit()
+	    })
 	    .then(answer => {
 		if (answer === "I") {
 		    let connectionObject;
@@ -234,6 +390,7 @@ class RoseFolder {
 			.then(folder => {
 			    return new Promise((resolve, reject) => {
 				try {
+				    const isClass = true;
 				    this._writeFolderInfo(folder, isClass, connectionObject);
 				    resolve();
 				} catch (err) {
@@ -245,22 +402,24 @@ class RoseFolder {
 		}
 		else if (answer === "C") {
 		    let localFolder;
-		    this._selectExistingFolder('Please select the root folder that contains '
-					       + 'your source code (template)')
+		    (folderParameter
+		     ? Promise.resolve(folderParameter)
+		     : this._selectExistingFolder('Please select the root folder that contains '
+						+ 'your source code (template)'))
 			.then(folder => {
-			    console.log(`local folder: ${folder}`);
-			    localFolder = folder;
-			    const prompts = [
-				{ message: "Name of the new scenario class in Rose Studio:",
-				  fieldName: 'NAME',
-				  defaultValue: folder
-				}
-			    ];
-			    let ISLOCAL = 1;
-			    return this._createRoseStudioObjectInteractively('connections',
-									     { ISLOCAL },
-									     prompts);
-			})
+			//console.log(`local folder: ${folder}`);
+			localFolder = folder;
+			const prompts = [
+			    { message: "Name of the new scenario class in Rose Studio:",
+			      fieldName: 'NAME',
+			      defaultValue: path.basename(folder)
+			    }
+			];
+			let ISLOCAL = 1;
+			return this._createRoseStudioObjectInteractively('connections',
+									 { ISLOCAL },
+									 prompts);
+		    })
 			.then(newObject => {
 			    //console.log(`new object created: ${JSON.stringify(newObject, null, 2)}`);
 			    const { NAME, UUID } = newObject;
@@ -527,9 +686,63 @@ class RoseFolder {
 	    .catch(err => cliError(err))
     }
 
-    updateInstanceFolder(folder, options = {}) {
+    updateScenarioFolder(folder, options = {}, internalOptions = {}) {
 	const finfo = this.getFolderInfo(folder);
-	//console.log(`finfo: ${JSON.stringify(finfo, null, 2)}`);
+	const errmsgNoInfo = `no rose information found for "${folder}"; `
+	      + 'please specify a folder that is connected to a RoseStudio scenario class.';
+	if (!finfo) {
+	    return cliError(errmsgNoInfo);
+	}
+	if (!finfo.object && !finfo.object.UUID) {
+	    return cliError(errmsgNoInfo);
+	}
+	const uuid = finfo.object.UUID;
+	if (finfo.object.CLASS_UUID) {
+	    let msg = `Folder "${folder}" doesn't seem to be connected to a scenarion class; `
+		+ 'please specify a folder that is connected to an RoseStudio scenario class.';
+	    return cliError(msg);
+	}
+	cliInfo(`uploading contents of folder "${folder}"...`, true);
+	const ptimer = cliStartProgress();
+	this.rose.uploadCodeTemplate(uuid, folder, (err, result) => {
+	    cliStopProgress(ptimer);
+	    if (err) {
+		return cliError(err);
+	    }
+	    cliInfo('done.');
+	    if (!internalOptions.instanceFolders && !options.full) {
+		cliInfo(`instance folders not updated; specify "--full" options to`
+			+ ` automatically update all instance folder.`);
+		return
+	    }
+	    let instanceFolders = internalOptions.instanceFolders || this.getAllInstanceFolders(uuid);
+	    if (!Array.isArray(instanceFolders)) instanceFolders = [instanceFolders]
+	    if (instanceFolders.length === 0) {
+		cliInfo('found no local instance folders for this scenarion class.');
+		return;
+	    }
+	    if (!internalOptions.instanceFolders) {
+		cliInfo(`found instance folders ${instanceFolders.join(", ")}`);
+	    }
+	    const updateNextInstanceFolder = () => {
+		if (instanceFolders.length === 0) {
+		    return;
+		}
+		let ifolder = instanceFolders.shift();
+		options.classUpdate = false;
+		this.updateInstanceFolder(ifolder, options)
+		    .then(() => {
+			updateNextInstanceFolder();
+		    })
+		    .catch(cliError)
+	    }
+	    updateNextInstanceFolder();
+	});
+    }
+
+    updateInstanceFolder(folder, options = {}, internalOptions = {}) {
+	const { classUpdate } = options;
+	const finfo = this.getFolderInfo(folder);
 	const errmsgNoInfo = `no rose information found for "${folder}"; `
 	      + 'please specify a folder that is connected to a RoseStudio scenario instance.';
 	if (!finfo) {
@@ -545,9 +758,22 @@ class RoseFolder {
 		+ 'please specify a folder that is connected to an RoseStudio scenario instance.';
 	    return cliError(msg);
 	}
+	if (options.classUpdate) {
+	    const internalOptions = { uuid: classUuid, instanceFolders: [folder] }
+	    const classFolderKey = this.getClassFolderKey(folder);
+	    if (!classFolderKey) {
+		cliInfo(`no scenario class found in local folder; downloading just the instance`
+			+ ` code from the RoseStudio server.`);
+	    } else {
+		const classFolder = this.getFolderNameFromFolderKey(classFolderKey)
+		cliInfo(`updating scenario class folder "${classFolder}"...`);
+		this.updateScenarioFolder(classFolder, {}, internalOptions);
+		return;
+	    }
+	}
 	//console.log(`found instance object uuid in folder ${folder}`);
 	return new Promise((resolve, reject) => {
-	    cliInfo('downloading the instance code...', true);
+	    cliInfo(`downloading the instance code for "${folder}"...`, true);
 	    const ptimer = cliStartProgress();
 	    const deleteFilter = filename => {
 		if (filename === roseInitFilename) {
@@ -564,6 +790,25 @@ class RoseFolder {
 		resolve();
 	    });
 	})
+    }
+
+    updateScenarioOrInstance(folder, options) {
+	const finfo = this.getFolderInfo(folder);
+	const errmsgNoInfo = `no rose information found for "${folder}"; `
+	      + 'please specify a folder that is connected to a RoseStudio scenario instance.';
+	if (!finfo) {
+	    return cliError(errmsgNoInfo);
+	}
+	if (!finfo.object && !finfo.object.UUID) {
+	    return cliError(errmsgNoInfo);
+	}
+	const uuid = finfo.object.UUID;
+	const classUuid = finfo.object.CLASS_UUID;
+	if (classUuid) {
+	    return this.updateInstanceFolder(folder, options);
+	} else {
+	    return this.updateScenarioFolder(folder, options);
+	}
     }
 
 }

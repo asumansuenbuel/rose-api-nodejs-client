@@ -1,4 +1,6 @@
 
+const { bold, green, blue } = require('chalk');
+
 const format = (text, lineLength = 80) => {
     const words = text.split(/\s+/);
     const lines = [];
@@ -38,10 +40,23 @@ const helpTexts = {
 		     + " In particular, the command line interface enables to associate"
 		     + " local folders with scenario class and instances. More documentation at"
 		     + " https://rose-studio.cfapps.us10.hana.ondemand.com/doc/api/index.html."),
-	ls: "list the entities (robots, backend_systems, connections)"
+	ls: "list the entities (robots, backend_systems, scenarios)"
 	    + " whose name matches the name-pattern."
 	    + " Alternatively, an object uuid can be provided in which case"
-	    + " information about the object with that uuid is shown.",
+	    + " information about the object with that uuid is shown."
+	    + " In order to list the instances of a scenarion class, the format"
+	    + "\n-\t" + bold('"ls [options] instances <name-pattern|uuid>"') + "\n"
+	    + "can be used. In this case, the name (pattern)"
+	    + " must uniquely describe a scenario class.",
+	initScenario: "initialize a local sub-folder with a RoseStudio scenario class (interactively)."
+	    + " If the folder argument is specified, it has to be a folder that is not yet connected"
+	    + " to any Rose artifact. In this case, a new scenario class is created in RoseStudio"
+	    + " and will be assicated with the folder. All required information is requested"
+	    + " interactively.",
+	createScenario: "same as \"init-scenario --create ...\"",
+	initInstance: "initialize a local sub-folder with a RoseStudio scenario instance (interactively);"
+	    + " the scenario-class-folder parameter must refer to a local folder that has"
+	    + " been initialized using the \"init-scenario\" command.",
 	updateInstance: "runs code generation on the rose server and downloads the code to the folder"
 	    + " which must be one that is connected to a scenarion instance."
 	    + " If the corresponding scenario class is connected to a local sub-folder then its"
@@ -51,13 +66,37 @@ const helpTexts = {
 	    + " scenario class and instances. If the folder argument is given,"
 	    + " only information related to that folder is shown",
 	editConfig: "command to edit config of the class or an instance that is associated"
-	    + " with the given folder."
+	    + " with the given folder.",
+	updateScenario: "uploads the contents of the scenario-class-folder as code template to the"
+	    + " associated RoseStudio scenario class. The folder must have been associated with the"
+	    + " scenario class using \"rose init-scenario\" command. Note, that all code content"
+	    + " for that class on the RoseStudio is overwritten by the contents of the local"
+	    + " folder through this command. If the \"-full\" option is specified, all instances"
+	    + " of the scenario class that are associated with a local folder are updated as well.",
+	update: "same as \"update-scenario\", if the folder is connected to a scenario *class*;"
+	    + " same as \"update-instance\", if the folder is connected to a scenario *instance*",
+	open: "opens the RoseStudio web page for the object matching the name pattern; the entity"
+	+ " name (connections, robots, backend_systems) doesn't need to be specified.",
+	unknownCommand: "Unknown command \"{0}\"; commands are \n  "
+	    + "{1}\n or \"--help\" for usage information."
     },
     commandOptions: {
 	editConfig: {
 	    noUpdate: "If the scenario folder is connected to a scenario *instance*, adding this flag"
 		+ " prevents an update on that folder, i.e. the updated generated code will *not*"
 		+ " be downloaded from the server."
+	},
+	initScenario: {
+	    create: "creates a new scenario in RoseStudio; the name is inquired interactively",
+	},
+	updateScenario: {
+	    full: "If specified, all instances of the scenario class that are associated with a"
+		+ " local folder are updated after the scenario class has been updated with the"
+		+ " content of the local folder."
+	},
+	updateInstance: {
+	    noClassUpdate: "By default, the code from the corresponding scenario class is"
+		+ " first uploaded to the Rose server. Specifying this option omits that step"
 	}
     }
 }

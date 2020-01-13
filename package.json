@@ -23,6 +23,7 @@
   "author": "Asuman Suenbuel",
   "license": "ISC",
   "dependencies": {
+    "chalk": "^3.0.0",
     "cli-table": "^0.3.1",
     "commander": "^4.1.0",
     "google-auth-library": "^5.7.0",

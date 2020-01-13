@@ -8,6 +8,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const openBrowser = require('open');
+
 const { inred, ingreen, inyellow, inmagenta, incyan } = require('../colorize');
 
 const _output = msg => {
@@ -121,8 +123,9 @@ const findAllFiles = (fname, dir) => {
 		    if (filename === fname) {
 			fileFound = true;
 			try {
-			    let content = fs.readFileSync(fullName, 'utf-8');
+			    let content = {};
 			    try {
+				content = fs.readFileSync(fullName, 'utf-8');
 				content = JSON.parse(content);
 			    } catch (err) {}
 			    const key = path.resolve(dir);
@@ -158,6 +161,32 @@ const allFilenamesInFolder = folder => {
     return fs.readdirSync(folder);
 }
 
+const isValidFilename = (fname, isPath = false) => {
+    const regex = new RegExp('[<>/\\\/\[\]\{\}#\|&:\(\)"\']');
+    if (isPath) {
+	fname = path.basename(fname);
+    }
+    return !fname.match(regex);
+}
+
+const isRelativeToFolder = (fname, folder = '.') => {
+    let rpath = path.relative(fs.realpathSync(folder), fname);
+    let p1 = rpath.split(path.sep)[0];
+    return p1 !== '..';
+}
+
+const stringFormat = (str, ...args) => {
+    for (k in args) {
+	str = str.replace("{" + k + "}", args[k])
+    }
+    return str
+};
+
+const openUrlInBrowser = (url, wait = false, callback = (() => 0)) => {
+    openBrowser(url, { wait }).then(callback);
+};
+    
+
 module.exports = {
     cliError,
     cliInfo,
@@ -169,5 +198,9 @@ module.exports = {
     getUniqueNameListAndHash,
     findAllFiles,
     stringIsUuid,
-    allFilenamesInFolder
+    allFilenamesInFolder,
+    isValidFilename,
+    isRelativeToFolder,
+    stringFormat,
+    openUrlInBrowser
 }

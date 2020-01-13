@@ -81,6 +81,7 @@ class ZipFile {
 	    if (filename === ".git") return false;
 	    if (filename === ".rose") return false;
 	    if (filename === "node_modules") return false;
+	    if (filename.endsWith('~')) return false;
 	    return true;
 	});
 	files.forEach(filename => {

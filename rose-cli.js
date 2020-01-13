@@ -8,6 +8,8 @@ const program = require('commander');
 
 const { login, logout } = require('./src/cli/cli-auth');
 const commands = require('./src/cli/commands')
+const { cliInfo, cliWarn, cliError, stringFormat } = require('./src/cli/cli-utils');
+const { blue } = require('chalk');
 
 const help = require('./src/cli/help-texts')
 
@@ -39,7 +41,7 @@ program
     .description('show the RoseStudio server url')
 
 program
-    .command('ls <entity> [name-pattern|uuid]')
+    .command('ls <robots|systems|scenarios|instances> [name-pattern|uuid]')
     .option('-j, --json', 'output in json format', false)
     .option('-u, --uuid',
 	    'output only (comma-separated) uuid(s); can be used '
@@ -50,39 +52,74 @@ program
     .description(help.commands.ls)
 
 program
+    .command('info [folder]')
+    .option('-l, --link', 'include the link to the object\'s RoseStudio page for each entry', false)
+    .action(commands.info)
+    .description(help.commands.info)
+
+program
+    .command('init-scenario [folder]')
+    .action(commands.initScenario)
+    .option('-c, --create', help.commandOptions.initScenario.create)
+    .description(help.commands.initScenario)
+
+program
+    .command('create-scenario [folder]')
+    .action(commands.createScenario)
+    .description(help.commands.createScenario)
+
+program
+    .command('init-instance <scenario-class-folder>')
+    .action(commands.initInstance)
+    .description(help.commands.initInstance)
+
+program
     .command('edit-config <scenario-folder>')
     .option('-n, --no-update', help.commandOptions.editConfig.noUpdate)
     .action(commands.edit)
     .description(help.commands.editConfig)
 
 program
-    .command('init-scenario')
-    .action(commands.initScenario)
-    .description('initialize a local sub-folder with a RoseStudio scenario class (interactively)')
-
-program
-    .command('init-instance <scenario-class-folder>')
-    .action(commands.initInstance)
-    .description(
-	`initialize a local sub-folder with a RoseStudio scenario instance (interactively);
-the scenario-class-folder parameter must refer to a local folder that has
-been initialized using the "init-scenario" command.`)
+    .command('update-scenario <scenario-class-folder>')
+    .option('-f, --full', help.commandOptions.updateScenario.full)
+    .action(commands.updateScenario)
+    .description(help.commands.updateScenario)
 
 program
     .command('update-instance <scenario-instance-folder>')
-    .option('-n, --no-class-update', 'By default, the code from the corresponding scenario class is '
-	    + 'first uploaded to the Rose server. Specifying this option omits that step')
+    .option('-n, --no-class-update', help.commandOptions.updateInstance)
     .action(commands.updateInstance)
     .description(help.commands.updateInstance)
 
 program
-    .command('info [folder]')
-    .option('-l, --link', 'include the link to the object\'s RoseStudio page for each entry', false)
-    .action(commands.info)
-    .description(help.commands.info)
+    .command('update <scenario-class-or-instance-folder>')
+    .option('-n, --no-class-update', help.commandOptions.updateInstance)
+    .option('-f, --full', help.commandOptions.updateScenario.full)
+    .action(commands.updateScenarioOrInstance)
+    .description(help.commands.update)
 
-program.parse(process.argv);
+program
+    .command('open <name-pattern>')
+    .action(commands.open)
+    .description(help.commands.open)
+
+const parsed = program.parse(process.argv);
+
+const commandName = parsed.rawArgs[2];
+
+
+const registeredCommands = program.commands.map(cmd => cmd.name());
+const _isRegisteredCommand = cmd => {
+    let command = cmd || commandName
+    return registeredCommands.includes(command);
+}
 
 if (process.argv.length === 2) {
   program.help();
+}
+
+if ((typeof commandName === 'string') && !_isRegisteredCommand()) {
+    cliInfo(stringFormat('*** ' + help.commands.unknownCommand,
+			 commandName,
+			 registeredCommands.map(s => blue(s)).join('\n  ')));
 }
