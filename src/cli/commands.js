@@ -403,7 +403,14 @@ Object.getOwnPropertyNames(proto)
 	const cliName = fn.substring(4);
 	module.exports[cliName] = (...args) => {
 	    const f = commandsInstance[fn].bind(commandsInstance);
-	    if (!commandsInstance.rose) return;
-	    return f(...args);
+	    if (!commandsInstance.rose) {
+		cliWarn(`You are not logged in into Rose. Please run "rose login".`);
+		return;
+	    }
+	    try {
+		return f(...args);
+	    } catch (err) {
+		cliError(err);
+	    }
 	}
     });

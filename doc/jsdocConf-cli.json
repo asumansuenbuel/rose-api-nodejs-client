@@ -1,0 +1,17 @@
+{
+    "title": "Rose Command Line Interface documentation",
+    "source": {
+	"include": ["./rose-cli.js", "doc/README-CLI.md"]
+    },
+    "plugins": [
+        "plugins/markdown"
+    ],
+    "opts": {
+	"template": "doc/jsdoc-template-cli",
+	"sort": false,
+	"destination": "../asu-dev-startups/public/doc/cli"
+    },
+    "default": {
+    },
+    "addSourceLinks": false
+}

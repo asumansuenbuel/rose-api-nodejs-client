@@ -50,7 +50,7 @@ const authenticatedRose = (roseOptions = {}) => {
 	const tokens = require(tokenFile);
 	return rose(tokens, roseOptions);
     } else {
-	cliWarn(`You are not logged in into Rose. Please run "rose login".`);
+	//cliWarn(`You are not logged in into Rose. Please run "rose login".`);
 	return null;
     }
 }

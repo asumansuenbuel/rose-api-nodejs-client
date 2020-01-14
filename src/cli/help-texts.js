@@ -48,13 +48,15 @@ const helpTexts = {
 	    + "\n-\t" + bold('"ls [options] instances <name-pattern|uuid>"') + "\n"
 	    + "can be used. In this case, the name (pattern)"
 	    + " must uniquely describe a scenario class.",
-	initScenario: "initialize a local sub-folder with a RoseStudio scenario class (interactively)."
+	user: "shows info about the user currently authenticated for the Rose command"
+	    + " line interface",
+	initScenario: bold("[interactive]") + " initialize a local sub-folder with a RoseStudio scenario class (interactively)."
 	    + " If the folder argument is specified, it has to be a folder that is not yet connected"
 	    + " to any Rose artifact. In this case, a new scenario class is created in RoseStudio"
 	    + " and will be assicated with the folder. All required information is requested"
 	    + " interactively.",
-	createScenario: "same as \"init-scenario --create ...\"",
-	initInstance: "initialize a local sub-folder with a RoseStudio scenario instance (interactively);"
+	createScenario: bold("[interactive]") + " same as \"init-scenario --create ...\"",
+	initInstance: bold("[interactive]") + " initialize a local sub-folder with a RoseStudio scenario instance (interactively);"
 	    + " the scenario-class-folder parameter must refer to a local folder that has"
 	    + " been initialized using the \"init-scenario\" command.",
 	updateInstance: "runs code generation on the rose server and downloads the code to the folder"
@@ -76,7 +78,8 @@ const helpTexts = {
 	update: "same as \"update-scenario\", if the folder is connected to a scenario *class*;"
 	    + " same as \"update-instance\", if the folder is connected to a scenario *instance*",
 	open: "opens the RoseStudio web page for the object matching the name pattern; the entity"
-	+ " name (connections, robots, backend_systems) doesn't need to be specified.",
+	    + " name (connections, robots, backend_systems) doesn't need to be specified.",
+	bashEnableCompletion: "this is a convenience command that can be used to enable bash completion for the rose command. Using the following on your bash command line enables the command completion for Rose: " + bold("$(rose bash-enable-completion)"),
 	unknownCommand: "Unknown command \"{0}\"; commands are \n  "
 	    + "{1}\n or \"--help\" for usage information."
     },
@@ -115,3 +118,8 @@ const formatStringsInObject = obj => {
 };
 
 module.exports = helpTexts;
+
+if (require.main === module) {
+    cmd = process.argv[2];
+    console.log(helpTexts.commands[cmd]);
+}

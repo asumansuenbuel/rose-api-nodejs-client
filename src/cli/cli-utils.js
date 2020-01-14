@@ -37,7 +37,7 @@ const cliInfo = (msg, nonewline) => {
 const cliWarn = msg => console.log(_output(inyellow(msg)));
 
 const cliStartProgress = () => {
-    const timer = setInterval(() => cliInfo('.', true), 1000);
+    const timer = setInterval(() => cliInfo('.', true, true), 1000);
     return timer;
 }
 
@@ -185,6 +185,10 @@ const stringFormat = (str, ...args) => {
 const openUrlInBrowser = (url, wait = false, callback = (() => 0)) => {
     openBrowser(url, { wait }).then(callback);
 };
+
+const getTmpFile = (prefix = "rose", suffix="") => {
+    return path.join(os.tmpdir(),`${prefix}-${process.ppid}${suffix}`);
+}
     
 
 module.exports = {
@@ -202,5 +206,6 @@ module.exports = {
     isValidFilename,
     isRelativeToFolder,
     stringFormat,
-    openUrlInBrowser
+    openUrlInBrowser,
+    getTmpFile
 }

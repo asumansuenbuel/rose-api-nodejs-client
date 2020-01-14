@@ -1,7 +1,7 @@
 {
     "title": "Rose-API documentation",
     "source": {
-	"include": ["src/api.js", "README.md"]
+	"include": ["src/api.js", "doc/README.md"]
     },
     "plugins": [
         "plugins/markdown"

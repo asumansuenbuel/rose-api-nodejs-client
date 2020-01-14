@@ -14,6 +14,8 @@ const { cliInfo, cliWarn, cliError, getUniqueNameListAndHash,
 	isRelativeToFolder } = require('./cli-utils');
 const { mkdirRecursiveSync } = require('../server_utils');
 
+const { blue, red, green, yellow, bold } = require('chalk');
+
 const roseInitFilename = '.rose';
 
 class RoseFolder {
@@ -376,11 +378,13 @@ class RoseFolder {
 			    return this._getCleanFolderName(msg, connObj.NAME);
 			})
 			.then(folder => {
-			    console.log(`downloding code from RoseStudio into `
-					+ `folder "${folder}"...`);
+			    cliInfo(`downloading code from RoseStudio into `
+				    + `folder "${folder}"...`, true);
+			    const ptimer = cliStartProgress();
 			    const uuid = connectionObject.UUID;
 			    return new Promise((resolve, reject) => {
 				this.rose.downloadCode(uuid, folder, (err, result) => {
+				    cliStopProgress(ptimer);
 				    if (err) return reject(err);
 				    cliInfo('done.');
 				    resolve(folder);
@@ -429,7 +433,7 @@ class RoseFolder {
 			    this._writeFolderInfo(localFolder, true, newObject);
 			    const url = this.rose.getRoseStudioConnectionPageUrl(UUID);
 			    cliInfo(`new connection object created and connected to local folder "${localFolder}"`);
-			    cliInfo(`RoseStudio url: ${url}`);
+			    cliInfo(`RoseStudio url: ${blue(url)}`);
 			    return newObject;
 			})
 			.then(obj => {
@@ -584,6 +588,12 @@ class RoseFolder {
 		if (!folder) {
 		    return;
 		}
+		try {
+		    let instanceFolderInfo = this.getFolderInfo(folder);
+		    let uuid = instanceFolderInfo.object.UUID;
+		    let url = this.rose.getRoseStudioConnectionPageUrl(uuid);
+		    cliInfo(`Rose Studio Url: ${blue(url)}`);
+		} catch (err) {}
 		let type = 'confirm',
 		    name = 'doUpdate',
 		    message = 'Do you want to download the instance code now?',
