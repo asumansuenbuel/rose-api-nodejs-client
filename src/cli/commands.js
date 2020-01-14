@@ -282,7 +282,13 @@ class Commands {
 
     cli_initInstance(classFolder, options = {}) {
 	const rfolder = new RoseFolder(this.rose);
-	rfolder.initInstanceInteractively(classFolder);
+	rfolder.initInstanceInteractively(classFolder, options);
+    }
+
+    cli_createInstance(classFolder, options = {}) {
+	const rfolder = new RoseFolder(this.rose);
+	options.create = true;
+	rfolder.initInstanceInteractively(classFolder, options);
     }
 
     cli_updateInstance(instanceFolder, options = {}) {

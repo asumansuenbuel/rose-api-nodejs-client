@@ -59,6 +59,7 @@ const helpTexts = {
 	initInstance: bold("[interactive]") + " initialize a local sub-folder with a RoseStudio scenario instance (interactively);"
 	    + " the scenario-class-folder parameter must refer to a local folder that has"
 	    + " been initialized using the \"init-scenario\" command.",
+	createInstance: bold("[interactive]") + " same as \"init-instance --create ...\"",
 	updateInstance: "runs code generation on the rose server and downloads the code to the folder"
 	    + " which must be one that is connected to a scenarion instance."
 	    + " If the corresponding scenario class is connected to a local sub-folder then its"
@@ -79,11 +80,23 @@ const helpTexts = {
 	    + " same as \"update-instance\", if the folder is connected to a scenario *instance*",
 	open: "opens the RoseStudio web page for the object matching the name pattern; the entity"
 	    + " name (connections, robots, backend_systems) doesn't need to be specified.",
-	bashEnableCompletion: "this is a convenience command that can be used to enable bash completion for the rose command. Using the following on your bash command line enables the command completion for Rose: " + bold("$(rose bash-enable-completion)"),
+	bashEnableCompletion: "this is a convenience command that can be used to enable bash"
+	    + " completion for the rose command. Using the following on your bash command"
+	    + " line enables the command completion for Rose: "
+	    + bold("$(rose bash-enable-completion)"),
 	unknownCommand: "Unknown command \"{0}\"; commands are \n  "
 	    + "{1}\n or \"--help\" for usage information."
     },
     commandOptions: {
+	common: {
+	    uuid: "output only uuid(s); useful if command is used as a sub-shell"
+		+ " command to pass the uuid to other rose commands.",
+	    json: "output in json format.",
+	    link: "include the link to the object\'s RoseStudio page for each entry"
+	},
+	ls: {
+	    fields: "comma-separated list of field names to be included in the output"
+	},
 	editConfig: {
 	    noUpdate: "If the scenario folder is connected to a scenario *instance*, adding this flag"
 		+ " prevents an update on that folder, i.e. the updated generated code will *not*"
@@ -91,6 +104,9 @@ const helpTexts = {
 	},
 	initScenario: {
 	    create: "creates a new scenario in RoseStudio; the name is inquired interactively",
+	},
+	initInstance: {
+	    create: "creates a new instance in RoseStudio; the name is inquired interactively",
 	},
 	updateScenario: {
 	    full: "If specified, all instances of the scenario class that are associated with a"
@@ -120,6 +136,14 @@ const formatStringsInObject = obj => {
 module.exports = helpTexts;
 
 if (require.main === module) {
-    cmd = process.argv[2];
-    console.log(helpTexts.commands[cmd]);
+    let cmd = process.argv[2];
+    let parts = cmd.split('.');
+    let s;
+    if (parts.length === 2) {
+	let copt = helpTexts.commandOptions[parts[0]]
+	s = copt[parts[1]]
+    } else {
+	s = helpTexts.commands[cmd];
+    }
+    console.log(s);
 }

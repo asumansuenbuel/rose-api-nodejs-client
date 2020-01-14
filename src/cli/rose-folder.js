@@ -463,7 +463,7 @@ class RoseFolder {
      * instance of the scenario class that is connected to the given
      * classFolder
      */
-    initInstanceInteractively(classFolder, debug = true) {
+    initInstanceInteractively(classFolder, options = {}, debug = false) {
 	
 	const doInit = classObject => {
 	    const { UUID, CLASS_UUID, NAME } = classObject; //folderInfo.object;
@@ -472,7 +472,11 @@ class RoseFolder {
 		return showError();
 	    }
 	    return new Promise((resolve, reject) => {
+		cliInfo('retrieving information from server...', true);
+		const ptimer = cliStartProgress();
 		this.rose.getAllConnectionInstances(UUID, (err, instanceObjects) => {
+		    cliStopProgress(ptimer);
+		    cliInfo('');
 		    if (err) {
 			return reject(err);
 		    }
@@ -495,13 +499,15 @@ class RoseFolder {
 				+ `connected to local folders`;
 			}
 			cliInfo(msg);
-			return inquirer
-			    .prompt({
-				type: 'confirm',
-				name: 'result',
-				message: 'Do you want to create a new instance?',
-				'default': true
-			    })
+			return (options.create
+				? Promise.resolve({ result: true })
+				: inquirer
+				.prompt({
+				    type: 'confirm',
+				    name: 'result',
+				    message: 'Do you want to create a new instance?',
+				    'default': true
+				}))
 			    .then(({ result }) => {
 				if (result) {
 				    return this.createNewInstanceInteractively({
@@ -522,8 +528,10 @@ class RoseFolder {
 			    name = 'result',
 			    message = 'Do you want to ...',
 			    choices = ['Create a new instance', 'Connect to an existing instance'];
-			inquirer
-			    .prompt({ type, name, message, choices, 'default': 0 })
+			(options.create
+			 ? Promise.resolve({ result: "Create" })
+			 : inquirer
+			 .prompt({ type, name, message, choices, 'default': 0 }))
 			    .then(({ result }) => {
 				if (result.startsWith('Create')) {
 				    return this.createNewInstanceInteractively({

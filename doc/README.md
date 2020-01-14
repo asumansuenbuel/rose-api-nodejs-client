@@ -15,4 +15,6 @@ The Rose API enables the use of Rose features outside the RoseStudio website int
 - integrate Rose into their NodeJs code on source code basis, and/or
 - use the command line interface to apply Rose's code-generation functionality on local files.
 
+Documentation for the Rose Command Line Interface can be found [here](../cli/index.html).
+
 

@@ -20,10 +20,19 @@ const _getRegisteredCommands = () => {
 }
 
 /**
- * The shell command for invoking the Rose command line interface is
- * *rose* following by one of the possible sub-commands listed below.
+ * The shell command for invoking the Rose command line interface. All
+ * rose commands are described in this page. If called no command then
+ * the help output is displayed. 
+
  * #### Usage
- * `rose [options] [sub-command] ... `
+ * `rose [options] [command] ... `
+ *
+ * #### Options
+ *
+ * |Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Description|
+ * |-|-|
+ * | `-h, --help` | Show usage information. The option `-h` or `--help` is also defined for all commands implicitly. Help for a specific command can be shown using `rose <commmand> --help`. |
+ *
  * @global
  * @name rose
  */
@@ -82,7 +91,7 @@ program
  */
 program
     .command('user')
-    .option('-j, --json', 'output in json format', false)
+    .option('-j, --json', help.commandOptions.common.json, false)
     .option('-s, --short', 'output short form', true)
     .action(commands.user)
     .description(help.commands.user)
@@ -103,28 +112,30 @@ program
  * list the entities (robots, backend_systems, scenarios) whose name
  * matches the name-pattern. Alternatively, an object uuid can be
  * provided in which case information about the object with that uuid is
- * shown. In order to list the instances of a scenarion class, the format
- *
- * ```
- * ls [options] instances <name-pattern|uuid>
- * ```
- *
+ * shown. In order to list the instances of a scenario class, the format
+ * "`ls [options] instances <name-pattern|uuid>`"
  * can be used. In this
  * case, the name (pattern) must uniquely describe a scenario class.
  *
  * #### Usage
- * `rose ls <robots|systems|scenarios|instances> [name-pattern|uuid]`
+ * `rose ls [options] <robots|systems|scenarios|instances> [name-pattern|uuid]`
+
+ * #### Options
+ * |Name|Description|
+ * |-|-|
+ * | `-j, --json` | output in json format|
+ * | `-u, --uuid` | output only uuid(s); useful if command is used as a sub-shell command to pass the uuid to other rose commands.|
+ * | `-f, --fields` | comma-separated list of field names to be included in the output, e.g. `rose ls robots -f "NAME,Manufacturer"`|
+
+
  * @global
  * @name ls
  */
 program
     .command('ls <robots|systems|scenarios|instances> [name-pattern|uuid]')
-    .option('-j, --json', 'output in json format', false)
-    .option('-u, --uuid',
-	    'output only (comma-separated) uuid(s); can be used '
-	    + 'to pass arguments to other rose commands',
-	    false)
-    .option('-f, --fields <comma-separated-fields>',null)
+    .option('-j, --json', help.commandOptions.common.json, false)
+    .option('-u, --uuid', help.commandOptions.common.uuid, false)
+    .option('-f, --fields <comma-separated-fields>',help.commandOptions.ls.fields, null)
     .action(commands.list)
     .description(help.commands.ls)
 
@@ -155,26 +166,32 @@ The  table lists  all local  folders that  are connection  to scenario
 class  and instances  in RoseStudio.  The output  also visualizes  the
 scenario instances beloning to which scenario class.
 
-Note, that this command shows only the local folders that are
+Note, that this command shows the local folders that are
 connected to RoseStudio artifacts. In order to inspect RoseStudio
-objects, use the ``rose ls`` command described above.
+objects, use the ``rose ls`` command instead.
 
  *
  * #### Usage
  * `rose info [options] [folder]`
+ *
+ * #### Options
+ * |Name|Description|
+ * |-|-|
+ * | `-l, --link` | include the link to the object's RoseStudio page for each entry|
+ *
  * @global
  * @name info
  */
 program
     .command('info [folder]')
-    .option('-l, --link', 'include the link to the object\'s RoseStudio page for each entry', false)
+    .option('-l, --link', help.commandOptions.link, false)
     .action(commands.info)
     .description(help.commands.info)
 
 /**
 
 interactively initialize a local sub-folder with a RoseStudio scenario
-class (interactively). If the folder argument is specified, it has to
+class. If the folder argument is specified, it has to
 be a folder that is not yet connected to any Rose artifact. In this
 case, a new scenario class is created in RoseStudio and will be
 assicated with the folder. All required information is requested
@@ -182,7 +199,13 @@ interactively.
 
  *
  * #### Usage
- * `rose init-scenario [folder]`
+ * `rose init-scenario [options] [folder]`
+ *
+ * #### Options
+ * |Name|Description|
+ * |-|-|
+ * | `-c, --create` | creates a new scenario in RoseStudio; the name is inquired interactively|
+ *
  * @global
  * @name init-scenario
  */
@@ -193,6 +216,7 @@ program
     .description(help.commands.initScenario)
 
 /**
+ * same as "init-scenario --create ..."
  *
  * #### Usage
  * `rose create-scenario [folder]`
@@ -205,34 +229,86 @@ program
     .description(help.commands.createScenario)
 
 /**
+ * initialize a local sub-folder with a RoseStudio scenario instance
+ * (interactively); the scenario-class-folder parameter must refer to
+ * a local folder that has been initialized using the "init-scenario"
+ * command. This command can also be used to create new instances in
+ * RoseStudio for the given scenario class and connect it with a local
+ * folder.
+ *
  *
  * #### Usage
- * `rose init-instance <scenario-class-folder>`
+ * `rose init-instance [options] <scenario-class-folder>`
+ *
+ * #### Options
+ * |Name|Description|
+ * |-|-|
+ * | `-c, --create` | creates a new instance in RoseStudio; the name is inquired interactively|
+ *
  * @global
  * @name init-instance
  */
 program
     .command('init-instance <scenario-class-folder>')
+    .option('-c, --create', help.commandOptions.initInstance.create)
     .action(commands.initInstance)
     .description(help.commands.initInstance)
 
 /**
+ * same as "init-instance --create ..."
  *
  * #### Usage
- * `rose edit-config <scenario-folder>`
+ * `rose create-instance <scenario-class-folder>`
+ * @global
+ * @name create-instance
+ */
+program
+    .command('create-instance <scenario-class-folder>')
+    .action(commands.createInstance)
+    .description(help.commands.createInstance)
+
+/**
+ * call the system editor to edit config of the scenario class or
+ * instance that is associated with the given folder. The system
+ * editor can be changed by setting the shell-level environment variable
+ * `EDITOR`; if not set "`vi`" is used.
+ *
+ * #### Usage
+ * `rose edit-config [options] <scenario-folder>`
+ *
+ * #### Options
+ * |Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Description|
+ * |-|-|
+ * | `-n, --no-update` | If the scenario folder is connected to a scenario *instance*, adding this flag prevents an update on that folder, i.e. the updated generated code will *not* be downloaded from the server.|
+ *
  * @global
  * @name edit-config
  */
 program
-    .command('edit-config <scenario-folder>')
+    .command('edit-config [options] <scenario-folder>')
     .option('-n, --no-update', help.commandOptions.editConfig.noUpdate)
     .action(commands.edit)
     .description(help.commands.editConfig)
 
 /**
+ * uploads the contents of the scenario-class-folder as code template
+ * to the associated RoseStudio scenario class. The folder must have
+ * been associated with the scenario class using "`rose init-scenario`"
+ * command. Note, that all code content for that class on the
+ * RoseStudio is overwritten by the contents of the local folder
+ * through this command. If the "-full" option is specified, all
+ * instances of the scenario class that are associated with a local
+ * folder are updated as well.
+ *
  *
  * #### Usage
- * `rose update-scenario <scenario-class-folder>`
+ * `rose update-scenario [options] <scenario-class-folder>`
+ *
+ * #### Options
+ * |Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Description|
+ * |-|-|
+ * | `-f, --full` | If specified, all instances of the scenario class that are associated with a local folder are updated after the scenario class has been updated with the content of the local folder.|
+ *
  * @global
  * @name update-scenario
  */
@@ -243,9 +319,20 @@ program
     .description(help.commands.updateScenario)
 
 /**
+ * runs code generation on the Rose server and downloads the code to
+ * the folder which must be one that is connected to a scenario
+ * instance. If the corresponding scenario class is connected to a
+ * local sub-folder then its code is uploaded to the server prior to
+ * code-generation and download of the instance code.
  *
  * #### Usage
- * `rose update-instance <scenario-instance-folder>`
+ * `rose update-instance [options] <scenario-instance-folder>`
+ *
+ * #### Options
+ * |Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Description|
+ * |-|-|
+ * | `-n, --no-class-update` | By default, the code from the corresponding scenario class is first uploaded to the Rose server. Specifying this option omits that step.|
+ *
  * @global
  * @name update-instance
  */
@@ -256,20 +343,31 @@ program
     .description(help.commands.updateInstance)
 
 /**
+ * same as "update-scenario", if the folder is connected to a scenario *class*; same as "update-instance", if the folder is connected to a scenario *instance*
  *
  * #### Usage
- * `rose update <scenario-class-or-instance-folder>`
+ * `rose update [options] <scenario-class-or-instance-folder>`
+ *
+ * #### Options
+ * |Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Description|
+ * |-|-|
+ * | `-f, --full` | see `--full` option for `update-scenario` command.|
+ * | `-n, --no-class-update` | see `--no-class-update` option for `update-instance` command.|
+ *
  * @global
  * @name update
  */
 program
     .command('update <scenario-class-or-instance-folder>')
-    .option('-n, --no-class-update', help.commandOptions.updateInstance)
+    .option('-n, --no-class-update', help.commandOptions.updateInstance.noUpdate)
     .option('-f, --full', help.commandOptions.updateScenario.full)
     .action(commands.updateScenarioOrInstance)
     .description(help.commands.update)
 
 /**
+ * opens the RoseStudio web page in the web-browser for the object
+ * matching the name pattern; the entity name (connections, robots,
+ * backend_systems) doesn't need to be specified.
  *
  * #### Usage
  * `rose open <name-pattern>`
@@ -282,6 +380,11 @@ program
     .description(help.commands.open)
 
 /**
+ * this is a convenience command that can be used to enable bash
+ * completion for the rose command. Using the following on your bash
+ * command line enables the command completion for Rose: `$(rose
+ * bash-enable-completion)`
+ *
  *
  * #### Usage
  * `rose bash-enable-completion`
