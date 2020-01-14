@@ -285,7 +285,7 @@ program
  * @name edit-config
  */
 program
-    .command('edit-config [options] <scenario-folder>')
+    .command('edit-config <scenario-folder>')
     .option('-n, --no-update', help.commandOptions.editConfig.noUpdate)
     .action(commands.edit)
     .description(help.commands.editConfig)
