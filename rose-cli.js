@@ -401,6 +401,14 @@ program
     })
     .description(help.commands.bashEnableCompletion)
 
+program
+    .command('version')
+    .action(() => {
+	let { version } = require('./package');
+	cliInfo(version);
+    })
+    .description('display the current Rose CLI/API version')
+
 const parsed = program.parse(process.argv);
 
 const commandName = parsed.rawArgs[2];
