@@ -77,10 +77,10 @@ class ZipFile {
 	    return;
 	}
 	const files = readdirSync(folder).filter(filename => {
-	    if (!fileFilter(filename)) return false;
-	    if (filename === ".git") return false;
 	    if (filename === ".rose") return false;
-	    if (filename === "node_modules") return false;
+	    if (filename === ".git") return false;
+	    if (!fileFilter(filename)) return false;
+	    //if (filename === "node_modules") return false;
 	    if (filename.endsWith('~')) return false;
 	    return true;
 	});

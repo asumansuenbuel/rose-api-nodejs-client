@@ -24,6 +24,8 @@ const request = require('request');
 const { Server, Auth, Settings } = require('./config');
 const ZipFile = require('./create-zip');
 
+const { fileContainsPreprocessorSyntax } = require('./server_utils');
+
 const RoseJsonDecorator = '%JSN';
 
 /**
@@ -1040,6 +1042,30 @@ class RoseAPI {
 
     }
 
+    api_hasCodeOnServer(connectionObj) {
+	return !connectionObj.ISLOCAL;
+    }
+
+    _isLocalScenario(connectionObj) {
+	return !!connectionObj.ISLOCAL;
+    }
+
+    _isScenarioInstance(connectionObj) {
+	return !!connectionObj.CLASS_UUID;
+    }
+
+    _isScenarioClass(connectionObj) {
+	return !connectionObj.CLASS_UUID;
+    }
+
+    _isLocalScenarioClass(connectionObj) {
+	return this._isLocalScenario(connectionObj) && this._isScenarioClass(connectionObj);
+    }
+
+    _isLocalScenarioInstance(connectionObj) {
+	return this._isLocalScenario(connectionObj) && this._isScenarioInstance(connectionObj);
+    }
+
     /**
      * This method is used to download the code part of a connection
      * object into a local folder.  In case of a connection class it
@@ -1050,6 +1076,20 @@ class RoseAPI {
      * can be either a class or an instance.
      * @param {string} targetFolder - the local folder into which the
      * code is downloaded.
+     * @param {object} [options]
+     * @param {object} options.sourceFolderInfo - information about
+     * the local source folder, from where code is copied over in case
+     * the connection object is a scenario instance and is marked as
+     * "ISLOCAL" on the server (Note that all scenarios created
+     * through the API/CLI are by default marked as "ISLOCAL".) In
+     * this case, this field is actually required, otherwise the
+     * operation will fail.
+     * @param {string} options.sourceFolderInfo.folder - the name of
+     * an existing folder on the local machine that contains the
+     * scenario class code
+     * @param {string} options.sourceFolderInfo.uuid - the UUID of the
+     * scenario class the code of which is stored in the scenario
+     * class folder; it must match the instance's class's uuid.
      * @param {callback} callback - callback called on completion of
      * the operation.
      * @global
@@ -1059,24 +1099,85 @@ class RoseAPI {
 	const cb = (typeof optionsOrCallback === 'function')
 	      ? optionsOrCallback : ensureFunction(callback);
 	const options = (typeof optionsOrCallback === 'object') ? optionsOrCallback : {};
-	const { dryRun, debug, deleteFilter } = options;
-	this.api_getCodeZip(uuid, (err, buf) => {
-	    if (err) {
-		return cb(err);
-	    }
-	    ZipFile.loadFromBuffer(buf, (err, zipFile) => {
+	const { dryRun, debug, deleteFilter, sourceFolderInfo } = options;
+
+	const getSourceCodeFolder = (cb1) => {
+	    this.api_getConnection(uuid, (err, cobj) => {
+		if (err) {
+		    return cb1(err);
+		}
+		let { NAME, CLASS_UUID } = cobj;
+		if (this._isLocalScenarioClass(cobj)) {
+		    let msg = `scenario classes "${cobj.NAME}" is marked as "local";`
+			+` code download is not supported for this kind of scenario classes`;
+		    return cb1(msg);
+		}
+		if (this._isLocalScenarioInstance(cobj)) {
+		    if (typeof sourceFolderInfo !== 'object') {
+			let msg = `scenarion instance "${NAME} is marked as "local" and `
+			    + `therefore requires "sourceFolderInfo" to be specified, which `
+			    + `is missing from the options argument`;
+			return cb1(msg);
+		    }
+		    let { folder, uuid } = sourceFolderInfo;
+		    if (typeof folder !== 'string') {
+			let msg = "sourceFolderInfo is missing the \"folder\" field that is "
+			    + "supposed to contain the name of the source code folder.";
+			return cb1(msg);
+		    }
+		    if (typeof uuid !== 'string') {
+			let msg = "sourceFolderInfo is missing the \"uuid\" field that is "
+			    + "supposed to contain the uuid of the instance's scenario class";
+			return cb1(msg);
+		    }
+		    if (CLASS_UUID !== uuid) {
+			let msg = `the uuid given as part of sourceFolderInfo doesn't match `
+			    + `that of scenario instance ${NAME}'s scenario class`;
+			return cb1(err);
+		    }
+		    return cb1(null, folder);
+		}
+		return cb1(null, null);
+	    });
+	}
+	
+	const getCodeFromServer = () => {
+	    this.api_getCodeZip(uuid, (err, buf) => {
 		if (err) {
 		    return cb(err);
 		}
-		const options = { dryRun, debug, clearFolder: true, deleteFilter };
-		zipFile.extractToFolder(targetFolder, options, err => {
+		ZipFile.loadFromBuffer(buf, (err, zipFile) => {
 		    if (err) {
 			return cb(err);
 		    }
-		    cb(null, `code extracted to folder ${targetFolder}`
-		       + (dryRun ? " [nothing done, dryRun flag is set]" : ""));
+		    const options = { dryRun, debug, clearFolder: true, deleteFilter };
+		    zipFile.extractToFolder(targetFolder, options, err => {
+			if (err) {
+			    return cb(err);
+			}
+			cb(null, `code extracted to folder ${targetFolder}`
+			   + (dryRun ? " [nothing done, dryRun flag is set]" : ""));
+		    });
 		});
 	    });
+	}
+
+	getSourceCodeFolder((err, sourceFolder) => {	
+	    // if sourceFolder is specified, copy the content of it first into target folder
+	    // and then the downloaded files
+	    if (err) {
+		return cb(err);
+	    }
+	    if (typeof sourceFolder === 'string') {
+		const srcZip = new ZipFile();
+		try {
+		    srcZip.addFolderRecursively(sourceFolder, sourceFolder, options);
+		} catch (err) {
+		    return cb(err);
+		}
+	    } else {
+		getCodeFromServer();
+	    }
 	});
     };
 
@@ -1126,28 +1227,55 @@ class RoseAPI {
 	const options = (typeof optionsOrCallback === 'object') ? optionsOrCallback : {};
 	const { dryRun, debug } = options;
 	debug && console.log(`uploading code from folder "${sourceFolder}"...`);
-	const zip = new ZipFile();
-	try {
-	    zip.addFolderRecursively(sourceFolder, sourceFolder, options);
-	} catch (err) {
-	    return cb(err);
-	}
-	const url = `binary/zip/${uuid}`;
-	const getReadStream = () => {
-	    this.debug && console.log('(re)creating zip read stream for request...');
-	    return zip.getReadStream();
+
+	const _checkIsLocal = cb1 => {
+	    this.api_getConnection(uuid, (err, cobj) => {
+		if (err) {
+		    return cb1(err);
+		}
+		let { NAME, UUID } = cobj;
+		if (!this._isScenarioClass(cobj)) {
+		    let msg = `"${NAME}" is not a scenario class; code upload not supported.`;
+		    return cb1(msg);
+		}
+		cb1(null, this._isLocalScenario(cobj))
+	    });
 	};
-	if (dryRun) {
-	    cb(null, 'dryRun, nothing uploaded.');
-	    return;
-	}
-	this._apiCallUploadBinary(url, getReadStream, (err, res) => {
-	    if (err) {
-		console.error(`ERROR: ${err}`)
+	
+	const _doUpload = isLocal => {
+	    const zip = new ZipFile();
+	    if (isLocal) {
+		options.whitelistFileFilterFunction = fileContainsPreprocessorSyntax
+	    }
+	    try {
+		zip.addFolderRecursively(sourceFolder, sourceFolder, options);
+	    } catch (err) {
 		return cb(err);
 	    }
-	    debug && console.log(`upload successful.`);
-	    cb(null, res.toString());
+	    const url = `binary/zip/${uuid}`;
+	    const getReadStream = () => {
+		this.debug && console.log('(re)creating zip read stream for request...');
+		return zip.getReadStream();
+	    };
+	    if (dryRun) {
+		cb(null, 'dryRun, nothing uploaded.');
+		return;
+	    }
+	    this._apiCallUploadBinary(url, getReadStream, (err, res) => {
+		if (err) {
+		    console.error(`ERROR: ${err}`)
+		    return cb(err);
+		}
+		debug && console.log(`upload successful.`);
+		cb(null, res.toString());
+	    });
+	};
+
+	_checkIsLocal((err, isLocal) => {
+	    if (err) {
+		return cb(err);
+	    }
+	    _doUpload(isLocal);
 	});
     }
 }

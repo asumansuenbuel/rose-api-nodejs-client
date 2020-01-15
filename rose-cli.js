@@ -367,15 +367,16 @@ program
 /**
  * opens the RoseStudio web page in the web-browser for the object
  * matching the name pattern; the entity name (connections, robots,
- * backend_systems) doesn't need to be specified.
+ * backend_systems) doesn't need to be specified. If the name-pattern
+ * is omitted, the RoseStudio start page is opened.
  *
  * #### Usage
- * `rose open <name-pattern>`
+ * `rose open [name-pattern]
  * @global
  * @name open
  */
 program
-    .command('open <name-pattern>')
+    .command('open [name-pattern]')
     .action(commands.open)
     .description(help.commands.open)
 

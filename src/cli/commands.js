@@ -60,7 +60,7 @@ class Commands {
 	    //console.log(`finding ${namePattern} in ${entityName}...`)
 	    findEntities(entityName, qterm, (err, obj) => {
 		if (err) {
-		    //console.log(`not found: ${err}`);
+		    console.log(`not found: ${err}`);
 		    return _findInNextEntity();
 		}
 		callback(null, obj, entityName);
@@ -70,19 +70,28 @@ class Commands {
     }
 
     cli_open(namePattern, options = {}) {
-	this._findInAnyEntity(namePattern, (err, records, entity) => {
-	    if (err) {
-		return cliError(err);
-	    }
-	    if (records.length === 0) {
-		cliError('nothing to open...');
-	    }
-	    let obj = records[0];
-	    const url = this.rose.getRoseStudioEntityPageUrl(entity, obj.UUID);
-	    cliInfo(`opening ${url} for ${entity} object "${obj.NAME}"...`, true);
+	const _open = url => {
+	    cliInfo(`opening ${url}...`, true);
 	    openUrlInBrowser(url);
 	    cliInfo('done.');
-	});
+	}
+	
+	if (namePattern) {
+	    this._findInAnyEntity(namePattern, (err, records, entity) => {
+		if (err) {
+		    return cliError(err);
+		}
+		if (records.length === 0) {
+		    //cliError('nothing to open...');
+		}
+		let obj = records[0];
+		let url = this.rose.getRoseStudioEntityPageUrl(entity, obj.UUID);
+		_open(url);
+	    });
+	} else {
+	    let url = this.rose.getServerUrl();
+	    _open(url);
+	}
     }	
     
     cli_list(entity, namePattern = null, options = {}) {
@@ -179,7 +188,7 @@ class Commands {
 	const showInfo = (infoKeys, markInstances, markClasses) => {
 	    const head = options.link
 		  ? ['Folder', 'RoseStudio URL']
-		  : ['Folder', 'Name in RoseStudio', 'Type', 'UUID'];
+		  : ['Folder', 'Name in RoseStudio', 'Local?', 'Type', 'UUID'];
 	    const table = new Table({
 		head,
 		chars: _plainChars
@@ -196,13 +205,14 @@ class Commands {
 		let finfo = info[fullpath];
 		let type = finfo.isClass ? "class" : "instance";
 		let name = finfo.object ? finfo.object.NAME : '?';
+		let localInfo = finfo.object && !!finfo.object.ISLOCAL ? "local" : "server";
 		let prefix = '';
 		if (addMarks && !finfo.isClass) {
 		    prefix = markInstances ? instanceMark : markClasses ? classMark : '';
 		}
 		let uuid = finfo.object ? finfo.object.UUID : '?';
 		let url = this.rose.getRoseStudioConnectionPageUrl(uuid);
-		let row = options.link ? [rpath, url] : [rpath, name, type, uuid];
+		let row = options.link ? [rpath, url] : [rpath, name, localInfo, type, uuid];
 		row[0] = prefix + row[0]
 		table.push(row);
 	    });

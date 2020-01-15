@@ -147,7 +147,7 @@ class RoseFolder {
     }
 
     _processFolderArgumentToInitScenario(folder) {
-	cliWarn(`processing folder argument ${folder}...`)
+	//cliWarn(`processing folder argument ${folder}...`)
 	if (!folder) {
 	    // no folder argument passed to init-scenario
 	    return Promise.resolve(null);
@@ -378,18 +378,26 @@ class RoseFolder {
 			    return this._getCleanFolderName(msg, connObj.NAME);
 			})
 			.then(folder => {
-			    cliInfo(`downloading code from RoseStudio into `
-				    + `folder "${folder}"...`, true);
-			    const ptimer = cliStartProgress();
-			    const uuid = connectionObject.UUID;
-			    return new Promise((resolve, reject) => {
-				this.rose.downloadCode(uuid, folder, (err, result) => {
-				    cliStopProgress(ptimer);
-				    if (err) return reject(err);
-				    cliInfo('done.');
-				    resolve(folder);
+			    let hasCodeOnServer = this.rose.hasCodeOnServer(connectionObject);
+			    if (hasCodeOnServer) {
+				cliInfo(`downloading code from RoseStudio into `
+					+ `folder "${folder}"...`, true);
+			    } else {
+				cliInfo(`download skipped; scenario has no code on RoseStudio server.`);
+			    }
+			    const _download = () => {
+				const ptimer = cliStartProgress();
+				const uuid = connectionObject.UUID;
+				return new Promise((resolve, reject) => {
+				    this.rose.downloadCode(uuid, folder, (err, result) => {
+					cliStopProgress(ptimer);
+					if (err) return reject(err);
+					cliInfo('done.');
+					resolve(folder);
+				    });
 				});
-			    });
+			    };
+			    return hasCodeOnServer ? _download() : Promise.resolve(folder);
 			})
 			.then(folder => {
 			    return new Promise((resolve, reject) => {
@@ -405,6 +413,7 @@ class RoseFolder {
 			.catch(cliError)
 		}
 		else if (answer === "C") {
+		    let ISLOCAL = 1;
 		    let localFolder;
 		    (folderParameter
 		     ? Promise.resolve(folderParameter)
@@ -419,7 +428,6 @@ class RoseFolder {
 			      defaultValue: path.basename(folder)
 			    }
 			];
-			let ISLOCAL = 1;
 			return this._createRoseStudioObjectInteractively('connections',
 									 { ISLOCAL },
 									 prompts);
@@ -437,20 +445,30 @@ class RoseFolder {
 			    return newObject;
 			})
 			.then(obj => {
-			    const { UUID } = obj;
-			    if (!UUID) {
-				throw "something went wrong, UUID is missing from object"
-			    }
-			    cliInfo(`uploading source code to RoseStudio...`, true);
-			    const ptimer = cliStopProgress();
-			    return new Promise((resolve, reject) => {
-				this.rose.uploadCodeTemplate(UUID, localFolder, (err, result) => {
-				    cliStopProgress(ptimer);
-				    if (err) return reject(err);
-				    cliInfo('done');
-				    resolve();
+
+			    const _upload = () => {
+				const { UUID } = obj;
+				if (!UUID) {
+				    throw "something went wrong, UUID is missing from object"
+				}
+				cliInfo(`uploading source code to RoseStudio...`, true);
+				const ptimer = cliStopProgress();
+				return new Promise((resolve, reject) => {
+				    this.rose.uploadCodeTemplate(UUID, localFolder, (err, result) => {
+					cliStopProgress(ptimer);
+					if (err) return reject(err);
+					cliInfo('done');
+					resolve();
+				    });
 				});
-			    });
+
+				const _skipUpload = () => {
+				    cliInfo(`skipping upload; new scenario "${NAME}" is marked as`
+					    + `"local"; this setting can be changed in RoseStudio.`);
+				    return Promise.resolve();
+				}
+			    };
+			    return ISLOCAL ? _skipUpload() : _upload();
 			})
 			.catch(cliError)
 		}

@@ -2,6 +2,15 @@
 .source code {
 background: #eee;
 }
+box {
+border: solid black 1pt;
+display: block;
+padding: 5pt;
+}
+
+red {
+color: red;
+}
 </style>
 
 -----------------------
@@ -52,9 +61,13 @@ export PATH=$PATH:$(npm bin)
 This adds the directory containing the rose executable to your PATH. In
 order to "permanently" add this to your PATH, run the `npm bin`
 command and add the path that is shown to your PATH variable in your
-shell startup file (e.g. `.profile` or `.bashrc`). Note, do not use
+shell startup file (e.g. `.profile`). Note, do not use
 the command above verbatim to your startup file, as the result of `npm
-bin` can be different during initialization of the terminal.
+bin` can be different during initialization of the terminal. A "fool-proof" way of doing it on shell-based terminals is to run the following on your command line:
+
+```plain
+touch ~/.profile && echo "export PATH=\"\${PATH}:$(npm bin)\"" >> ~/.profile
+```
 
 In order to check whether it's working, try the following command:
 
@@ -63,3 +76,9 @@ rose version
 ```
 
 which should output a version number in the format "X.Y.Z".
+
+<box> <red>IMPORTANT:</red> If you want to update the package using
+the "`npm install ...`" command above, you must run this in the same
+directory in which you've invoked it the first time in order for the
+"`rose`" command to be updated correctly. Otherwise you might still
+get the older version.  </box>

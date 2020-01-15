@@ -13,17 +13,24 @@ const openBrowser = require('open');
 const { inred, ingreen, inyellow, inmagenta, incyan } = require('../colorize');
 
 const _output = msg => {
-    try {
-	let json = JSON.parse(msg);
+    let json = null;
+    if (typeof msg === 'object') {
+	json = msg;
+    } else {
+	try {
+	    json = JSON.parse(msg);
+	} catch (err) {}
+    }
+    if (json) {
 	if (json.error) return json.error;
 	return JSON.stringify(json, null, 2);
-    } catch (err) {}
+    }
     return msg;
 }
 
 const cliError = errmsg => {
     let msg = _output(errmsg);
-    console.error(inred(`*** ${msg}`));
+    console.error(inred(formatText(`${msg}`, 80, '***')));
 }
 
 const cliInfo = (msg, nonewline) => {
@@ -182,6 +189,39 @@ const stringFormat = (str, ...args) => {
     return str
 };
 
+const formatText = (text, lineLength = 80, indent = '') => {
+    const words = text.split(/\s+/);
+    const lines = [];
+    var currentLine = [indent];
+    words.forEach(word => {
+	let wlen = word.length;
+	let llen = currentLine.join(" ").length;
+	if (llen + wlen > lineLength) {
+	    lines.push(currentLine);
+	    currentLine = [indent];
+	}
+	currentLine.push(word);
+    });
+    if (currentLine.length > 0) {
+	lines.push(currentLine);
+    }
+    const longestLineLength = lines.reduce((max, line) => Math.max(line.join(' ').length, max), -1);
+    //console.log(`longest line length: ${longestLineLength}`);
+    if (false) {
+	const formattedLines = lines.map(words => {
+	    if (words.join(" ").length < longestLineLength * 0.8) {
+		return
+	    }
+	    while (words.join(' ').length < longestLineLength) {
+		let index = Math.trunc(Math.random() * (words.length - 1)) + 1;
+		words.splice(index,0,'');
+	    }
+	});
+    }
+    const formattedText = lines.map(words => words.join(' ')).join('\n');
+    return formattedText;
+}
+
 const openUrlInBrowser = (url, wait = false, callback = (() => 0)) => {
     openBrowser(url, { wait }).then(callback);
 };
@@ -190,7 +230,6 @@ const getTmpFile = (prefix = "rose", suffix="") => {
     return path.join(os.tmpdir(),`${prefix}-${process.ppid}${suffix}`);
 }
     
-
 module.exports = {
     cliError,
     cliInfo,
@@ -206,6 +245,7 @@ module.exports = {
     isValidFilename,
     isRelativeToFolder,
     stringFormat,
+    formatText,
     openUrlInBrowser,
     getTmpFile
 }

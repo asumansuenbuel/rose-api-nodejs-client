@@ -1,36 +1,7 @@
 
 const { bold, green, blue } = require('chalk');
-
-const format = (text, lineLength = 80) => {
-    const words = text.split(/\s+/);
-    const lines = [];
-    var currentLine = [];
-    words.forEach(word => {
-	let wlen = word.length;
-	let llen = currentLine.join(" ").length;
-	if (llen + wlen > lineLength) {
-	    lines.push(currentLine);
-	    currentLine = [];
-	}
-	currentLine.push(word);
-    });
-    if (currentLine.length > 0) {
-	lines.push(currentLine);
-    }
-    const longestLineLength = lines.reduce((max, line) => Math.max(line.join(' ').length, max), -1);
-    //console.log(`longest line length: ${longestLineLength}`);
-    const formattedLines = lines.map(words => {
-	if (words.join(" ").length < longestLineLength * 0.8) {
-	    return
-	}
-	while (words.join(' ').length < longestLineLength) {
-	    let index = Math.trunc(Math.random() * (words.length - 1)) + 1;
-	    words.splice(index,0,'');
-	}
-    });
-    const formattedText = lines.map(words => words.join(' ')).join('\n');
-    return formattedText;
-}
+const { formatText } = require('./cli-utils');
+const format = formatText;
 
 const helpTexts = {
     commands: {

@@ -8,6 +8,7 @@ const { mkdirSync, rmdir, existsSync, readdirSync, lstatSync, unlink } = require
 const { inred, ingreen, inblue, inyellow, inblack, inmagenta, incyan } = require('./colorize');
 
 const config = require('./config')
+const isBinaryFile = require('isbinaryfile');
 
 /**
  * determines whether the value needs to be quoted or not for
@@ -235,6 +236,32 @@ const removeFolderRecursively = (path, options) => {
     return () => PromiseChain(promises);
 }
 
+const stringContainsPreprocessorSyntax = string => {
+    const jsLineRe = new RegExp('^\\s*//!\\s*(.*)\\s*$');
+    const substRe = new RegExp(/\$(\$\{[^\}]*\})/);
+    if (typeof string !== 'string') return false;
+    const lines = string.split("\n");
+    for(let i = 0; i < lines.length; i++) {
+	let line = lines[i];
+	if (line.match(jsLineRe)) return true;
+	if (line.match(substRe)) return true;
+    }
+    return false;
+}
+
+const fileContainsPreprocessorSyntax = filename => {
+    try {
+	if (isBinaryFile.sync(filename)) {
+	    return false;
+	}
+	let contents = fs.readFileSync(filename, 'utf-8');
+	return stringContainsPreprocessorSyntax(contents);
+    } catch (err) {
+	return false;
+    }
+    
+}
+
 /**
  * utility to chain promises. The function takes an array of functions
  * that return a Promise object as argument and returns the chained
@@ -256,5 +283,7 @@ module.exports = {
     mkdirRecursiveSync,
     getFolderTreeJson,
     removeFolderRecursively,
+    stringContainsPreprocessorSyntax,
+    fileContainsPreprocessorSyntax,
     PromiseChain
 }
