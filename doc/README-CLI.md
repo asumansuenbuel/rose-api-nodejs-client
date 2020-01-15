@@ -49,9 +49,17 @@ In order to access the "`rose`" command from your command line, you have to add 
 export PATH=$PATH:$(npm bin)
 ```
 
-This add the directory containing the rose executable to your PATH. In
+This adds the directory containing the rose executable to your PATH. In
 order to "permanently" add this to your PATH, run the `npm bin`
 command and add the path that is shown to your PATH variable in your
 shell startup file (e.g. `.profile` or `.bashrc`). Note, do not use
 the command above verbatim to your startup file, as the result of `npm
 bin` can be different during initialization of the terminal.
+
+In order to check whether it's working, try the following command:
+
+```plain
+rose version
+```
+
+which should output a version number in the format "X.Y.Z".
