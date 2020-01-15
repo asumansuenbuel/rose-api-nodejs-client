@@ -1,6 +1,6 @@
 {
   "name": "rose-api-nodejs-client",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "Rose nodejs API",
   "main": "index.js",
   "scripts": {

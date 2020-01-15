@@ -401,6 +401,14 @@ program
     })
     .description(help.commands.bashEnableCompletion)
 
+/**
+ * Shows the Rose CLI version in the form X.Y.Z
+ *
+ * #### Usage
+ * `rose open <name-pattern>`
+ * @global
+ * @name version
+ */
 program
     .command('version')
     .action(() => {
