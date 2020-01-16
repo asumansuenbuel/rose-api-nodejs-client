@@ -345,13 +345,10 @@ class Commands {
 			    if (options.update) {
 				//cliInfo('updating instance folder...');
 				let updateOptions = {
-				    classUpdate: true
+				    classUpdate: false,
+				    internalCall: true
 				}
 				this.cli_updateInstance(name, updateOptions)
-				    .then(() => {
-					//cliInfo('done.');
-				    })
-				    .catch(cliError)
 			    } else {
 				cliInfo(`instance folder hasn't been updated; please run `
 					+ `"rose update ${NAME}" to do that.`);
