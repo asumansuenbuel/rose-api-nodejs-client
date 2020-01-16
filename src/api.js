@@ -341,6 +341,11 @@ class RoseAPI {
     // -----------------------------------------------------------------------------
     
     /**
+     * returns all objects of the given entity from Rose
+     * @param {entityName} entityName - the entity for the objects
+     * (backend_systems, robots, or connections)
+     * @param {callback} callback - the callback function for
+     * receiving the retrieved records
      * @global
      * @alias getEntities
      * @param {entityName} entityName
@@ -351,6 +356,9 @@ class RoseAPI {
     }
 
     /**
+     * returns all backend system objects from Rose
+     * @param {callback} callback - the callback function for
+     * receiving the retrieved records
      * @see getEntities
      * @global
      * @alias getBackendSystems
@@ -360,6 +368,9 @@ class RoseAPI {
     }
 
     /**
+     * returns all robot objects from Rose
+     * @param {callback} callback - the callback function for
+     * receiving the retrieved records
      * @see getEntities
      * @global
      * @alias getRobots
@@ -369,6 +380,9 @@ class RoseAPI {
     }
 
     /**
+     * returns all connection/scenario objects from Rose
+     * @param {callback} callback - the callback function for
+     * receiving the retrieved records
      * @see getEntities
      * @global
      * @alias getConnections

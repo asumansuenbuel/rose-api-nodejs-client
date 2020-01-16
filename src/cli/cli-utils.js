@@ -14,7 +14,7 @@ const { inred, ingreen, inyellow, inmagenta, incyan } = require('../colorize');
 
 const _output = msg => {
     let json = null;
-    if (typeof msg === 'object') {
+    if (typeof msg === 'object' && Object.keys(msg).length > 0) {
 	json = msg;
     } else {
 	try {
@@ -31,6 +31,7 @@ const _output = msg => {
 const cliError = errmsg => {
     let msg = _output(errmsg);
     console.error(inred(formatText(`${msg}`, 80, '***')));
+    //console.error(errmsg);
 }
 
 const cliInfo = (msg, nonewline) => {
@@ -169,7 +170,7 @@ const allFilenamesInFolder = folder => {
 }
 
 const isValidFilename = (fname, isPath = false) => {
-    const regex = new RegExp('[<>/\\\/\[\]\{\}#\|&:\(\)"\']');
+    const regex = new RegExp(/[<>/\\\/\[\]\{\}#\|&:\(\)"']/);
     if (isPath) {
 	fname = path.basename(fname);
     }

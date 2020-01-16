@@ -11,10 +11,12 @@ const inquirer = require('inquirer');
 const { cliInfo, cliWarn, cliError, getUniqueNameListAndHash,
 	findAllFiles, stringIsUuid, allFilenamesInFolder,
 	cliStartProgress, cliStopProgress, isValidFilename,
-	isRelativeToFolder } = require('./cli-utils');
+	isRelativeToFolder, stringFormat } = require('./cli-utils');
 const { mkdirRecursiveSync } = require('../server_utils');
 
-const { blue, red, green, yellow, bold } = require('chalk');
+const { messages } = require('./help-texts');
+
+const { blue, red, green, yellow, bold, dim } = require('chalk');
 
 const roseInitFilename = '.rose';
 
@@ -313,8 +315,8 @@ class RoseFolder {
     _createRoseStudioObjectInteractively(entityName, initialValueHash, prompts) {
 	const questions = [];
 	prompts.forEach(pobj => {
-	    const { message, fieldName, defaultValue, fieldType } = pobj;
-	    const question = { type: 'input', message, name: fieldName };
+	    const { message, fieldName, defaultValue, fieldType, validate, filter } = pobj;
+	    const question = { type: 'input', message, name: fieldName, validate, filter };
 	    if (typeof defaultValue !== 'undefined') {
 		question['default'] = defaultValue;
 	    }
@@ -342,6 +344,22 @@ class RoseFolder {
 
     initScenarioInteractively(folder, options = {}) {
 	const { create } = options;
+
+	const _getExistingConnectionsFromRoseServer = () => {
+	    cliInfo(`retrieving information from Rose server...`, true);
+	    const ptimer = cliStartProgress();
+	    return new Promise((resolve, reject) => {
+		this.rose.getConnections((err, records) => {
+		    cliStopProgress(ptimer);
+		    cliInfo('');
+		    if (err) {
+			return reject(err);
+		    }
+		    resolve(records);
+		});
+	    })
+	}
+	
 	const _inquireCreateOrInit = () => {
 	    let type = 'rawlist';
 	    let name = 'result';
@@ -358,7 +376,17 @@ class RoseFolder {
 		.then(answer => answer.result[0]);
 	};
 	let folderParameter = null;
-	this._processFolderArgumentToInitScenario(folder)
+	let existingConnectionObjects = [];
+	let existingConnectionNames = []
+	_getExistingConnectionsFromRoseServer()
+	    .then(cobjs => {
+		if (cobjs && Array.isArray(cobjs)) {
+		    existingConnectionObjects = cobjs;
+		    existingConnectionNames = cobjs.map(cobj => cobj.NAME);
+		}
+		//console.log(`existing names: ${existingConnectionNames.sort().join('\n')}`)
+		return this._processFolderArgumentToInitScenario(folder)
+	    })
 	    .then(fld => {
 		if (fld) {
 		    folderParameter = fld;
@@ -428,7 +456,18 @@ class RoseFolder {
 			const prompts = [
 			    { message: "Name of the new scenario class in Rose Studio:",
 			      fieldName: 'NAME',
-			      defaultValue: path.basename(folder)
+			      defaultValue: path.basename(folder),
+			      validate: name => {
+				  if (existingConnectionNames.includes(name)) {
+				      return `a scenario with that name already exists, `
+					  + `please choose a different name.`;
+				  }
+				  if (!isValidFilename(name)) {
+				      return `this name contains invalid characters`;
+				  }
+				  return true;
+			      },
+			      filter: name => name.trim()
 			    }
 			];
 			return this._createRoseStudioObjectInteractively('connections',
@@ -464,13 +503,12 @@ class RoseFolder {
 					resolve();
 				    });
 				});
-
-				const _skipUpload = () => {
-				    cliInfo(`skipping upload; new scenario "${NAME}" is marked as`
-					    + `"local"; this setting can be changed in RoseStudio.`);
-				    return Promise.resolve();
-				}
 			    };
+			    const _skipUpload = () => {
+				cliInfo(`skipping upload; new scenario "${obj.NAME}" is marked as `
+					+ `"local"; this setting can be changed in RoseStudio.`);
+				return Promise.resolve();
+			    }
 			    return ISLOCAL ? _skipUpload() : _upload();
 			})
 			.catch(cliError)
@@ -519,7 +557,7 @@ class RoseFolder {
 			    msg = `All instances of scenario class "${scenarioClassName}" are already `
 				+ `connected to local folders`;
 			}
-			cliInfo(msg);
+			!options.create && cliInfo(msg);
 			return (options.create
 				? Promise.resolve({ result: true })
 				: inquirer
@@ -531,10 +569,12 @@ class RoseFolder {
 				}))
 			    .then(({ result }) => {
 				if (result) {
+				    //console.log(`classFolder: ${classFolder}`);
 				    return this.createNewInstanceInteractively({
 					classUuid: UUID,
 					className: scenarioClassName,
-					existingInstancesNames
+					existingInstancesNames,
+					classFolder
 				    });
 				} else {
 				    return null;
@@ -558,7 +598,8 @@ class RoseFolder {
 				    return this.createNewInstanceInteractively({
 					classUuid: UUID,
 					className: scenarioClassName,
-					existingInstancesNames
+					existingInstancesNames,
+					classFolder
 				    });
 				} else {
 				    // connect to an existing instance
@@ -636,7 +677,8 @@ class RoseFolder {
 		    })
 		    .then(({ doUpdate }) => {
 			if (doUpdate) {
-			    return this.updateInstanceFolder(folder).catch(cliError);
+			    let updateOptions = { classUpdate: false, internalCall: true };
+			    return this.updateInstanceFolder(folder, updateOptions).catch(cliError);
 			} else {
 			    let msg = `You can always run "rose update ${folder}" to download `
 				+ `the updated instance code.`;
@@ -647,7 +689,7 @@ class RoseFolder {
     }
 
     _getValidNameForNewInstance(options) {
-	const { classUuid, className, existingInstancesNames } = options;
+	const { classUuid, className, existingInstancesNames, classFolder } = options;
 	/*
 	if (Array.isArray(existingInstancesNames) && existingInstancesNames.length > 0) {
 	    cliInfo(`Names of existing instances for scenario class "${className}":`);
@@ -667,7 +709,9 @@ class RoseFolder {
 	    }
 	    if (Array.isArray(existingInstancesNames)) {
 		if (existingInstancesNames.includes(tname)) {
-		    return "an instance with that name already exists";
+		    return "an instance with that name already exists; "
+			+ `use "rose init-instance ${classFolder}" and select `
+			+ `"Connect to an existing instance".`;
 		}
 	    }
 	    return true;
@@ -689,7 +733,7 @@ class RoseFolder {
 
     
     createNewInstanceInteractively(options) {
-	const { classUuid, className } = options;
+	const { classUuid, className, classFolder } = options;
 	return this._getValidNameForNewInstance(options)
 	    .then(iname => {
 		cliInfo(`creating new instance named "${iname}"...`);
@@ -714,7 +758,7 @@ class RoseFolder {
 
     connectObjectToFolderInteractively(object) {
 	const instanceName = object.NAME;
-	const message = 'Enter the name of the folder for the instance';
+	const message = 'Enter the name of the (new) folder for the instance (will be created):';
 	const defaultValue = instanceName;
 	return this._getCleanFolderName(message, defaultValue)
 	    .then(folder => {
@@ -743,23 +787,12 @@ class RoseFolder {
 	    return cliError(msg);
 	}
 	cliInfo(`uploading to scenario "${finfo.object.NAME}"...`, true);
-	const ptimer = cliStartProgress();
-	this.rose.uploadCodeTemplate(uuid, folder, (err, filesAdded) => {
-	    cliStopProgress(ptimer);
-	    if (err) {
-		return cliError(err);
-	    }
-	    cliInfo(`uploaded ${filesAdded.length} files to RoseStudio.`);
-	    console.log(filesAdded);
-	    if (!internalOptions.instanceFolders && !options.full) {
-		cliInfo(`instance folders not updated; specify "--full" options to`
-			+ ` automatically update all instance folder.`);
-		return
-	    }
+
+	const _updateInstances = uuid => {
 	    let instanceFolders = internalOptions.instanceFolders || this.getAllInstanceFolders(uuid);
 	    if (!Array.isArray(instanceFolders)) instanceFolders = [instanceFolders]
 	    if (instanceFolders.length === 0) {
-		cliInfo('found no local instance folders for this scenarion class.');
+		cliInfo('found no local instance folders for this scenario class.');
 		return;
 	    }
 	    if (!internalOptions.instanceFolders) {
@@ -779,6 +812,27 @@ class RoseFolder {
 		    .catch(cliError)
 	    }
 	    updateNextInstanceFolder();
+	};
+
+	if (options.instancesOnly) {
+	    cliInfo(`option "--instances-only" has been specified, skipping scenario class upload.`);
+	    return _updateInstances(uuid);
+	}
+	
+	const ptimer = cliStartProgress();
+	this.rose.uploadCodeTemplate(uuid, folder, (err, filesAdded) => {
+	    cliStopProgress(ptimer);
+	    if (err) {
+		return cliError(err);
+	    }
+	    cliInfo(`uploaded ${filesAdded.length} files to RoseStudio.`);
+	    cliInfo('  ' + filesAdded.map(f => dim(`- ${f}`)).join('\n  '));
+	    if (!internalOptions.instanceFolders && !options.full) {
+		cliInfo(`instance folders not updated; specify "--full" options to`
+			+ ` automatically update all instance folder.`);
+		return
+	    }
+	    _updateInstances(uuid);
 	});
     }
 
@@ -816,7 +870,7 @@ class RoseFolder {
 	    } else {
 		const internalOptions = { uuid: classUuid, instanceFolders: [folder] }
 		cliInfo(`updating scenario class folder "${classFolder}"...`);
-		return this.updateScenarioFolder(classFolder, {}, internalOptions);
+		return this.updateScenarioFolder(classFolder, { wipe, skipConfirm }, internalOptions);
 	    }
 	}
 	let sourceFolderInfo = null;
@@ -837,9 +891,18 @@ class RoseFolder {
 	}
 	let confirmPromise = Promise.resolve({ ok: true });
 	//console.log(`found instance object uuid in folder ${folder}`);
+	if (!skipConfirm) {
+	    let msg = wipe ? messages.confirmWipeInstanceFolder	: messages.confirmOverwriteInstanceFolder;
+	    let message = stringFormat(msg, folder);
+	    let type = 'confirm',
+		name = 'ok';
+	    let question = { type, name, message };
+	    confirmPromise = inquirer.prompt(question);
+	}
 	return confirmPromise
 	    .then(({ ok }) => {
 		if (!ok) {
+		    cliInfo(`ok, ${folder} has not been updated.`);
 		    return Promise.resolve(false);
 		} else {
 		    return new Promise((resolve, reject) => {

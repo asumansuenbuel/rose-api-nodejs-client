@@ -12,7 +12,7 @@ const commands = require('./src/cli/commands')
 const { cliInfo, cliWarn, cliError, stringFormat, getTmpFile } = require('./src/cli/cli-utils');
 const { blue } = require('chalk');
 
-const help = require('./src/cli/help-texts')
+const { help } = require('./src/cli/help-texts')
 
 const _getRegisteredCommands = () => {
     const registeredCommands = program.commands.map(cmd => cmd.name());
@@ -277,7 +277,7 @@ program
  * `rose edit-config [options] <scenario-folder>`
  *
  * #### Options
- * |Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Description|
+ * |Name<div style="width: 200px">|Description|
  * |-|-|
  * | `-n, --no-update` | If the scenario folder is connected to a scenario *instance*, adding this flag prevents an update on that folder, i.e. the updated generated code will *not* be downloaded from the server.|
  *
@@ -305,9 +305,13 @@ program
  * `rose update-scenario [options] <scenario-class-folder>`
  *
  * #### Options
- * |Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Description|
- * |-|-|
+ * |Name<div style="width: 200px"></div>|Description| Default Value |
+ * |-|-|-|
  * | `-f, --full` | If specified, all instances of the scenario class that are associated with a local folder are updated after the scenario class has been updated with the content of the local folder.|
+ * | `-w, --wipe`| Only used when `--full` is given; option is then used while updating the connected instances of the scenario class. |false|
+ * | `-s, --skip-confirm` | Only used when `--full` is given; option is then used while updating the connected instances of the scenario class. | false |
+ * | `-i, --instances-only` | Only updates the instances of the scenario class; the scenario class itself is not updated on the Rose server. | false |
+ *
  *
  * @global
  * @name update-scenario
@@ -315,6 +319,9 @@ program
 program
     .command('update-scenario <scenario-class-folder>')
     .option('-f, --full', help.commandOptions.updateScenario.full)
+    .option('-w, --wipe', help.commandOptions.updateScenario.wipe, false)
+    .option('-s, --skip-confirm', help.commandOptions.updateScenario.skipConfirm, false)
+    .option('-i, --instances-only', help.commandOptions.updateScenario.instancesOnly, false)
     .action(commands.updateScenario)
     .description(help.commands.updateScenario)
 
@@ -329,7 +336,7 @@ program
  * `rose update-instance [options] <scenario-instance-folder>`
  *
  * #### Options
- * |Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Description|Default Value|
+ * |Name<div style="width: 200px">|Description|Default Value|
  * |-|-|-|
  * | `-n, --no-class-update` | By default, the code from the corresponding scenario class is first uploaded to the Rose server. Specifying this option omits that step.|false|
  * | `-w, --wipe`| if set, wipes out the contents of the instance folder prior to populating it with updated content from the scenario class. Otherwise, the new content will be copied on top of any existing content in the instance folder.|false|
@@ -342,7 +349,7 @@ program
     .command('update-instance <scenario-instance-folder>')
     .option('-n, --no-class-update', help.commandOptions.updateInstance.noClassUpdate, true)
     .option('-w, --wipe', help.commandOptions.updateInstance.wipe, false)
-    .option('-s, --skip-confirm', help.commandOptions.skipConfirm, false)
+    .option('-s, --skip-confirm', help.commandOptions.updateInstance.skipConfirm, false)
     .action(commands.updateInstance)
     .description(help.commands.updateInstance)
 
@@ -353,12 +360,12 @@ program
  * `rose update [options] <scenario-class-or-instance-folder>`
  *
  * #### Options
- * |Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Description|
+ * |Name<div style="width: 200px">|Description|
  * |-|-|
  * | `-f, --full` | see `--full` option for `update-scenario` command.|
  * | `-n, --no-class-update` | see `--no-class-update` option for `update-instance` command.|
- * | `-w, --wipe` | see `--wipe` option for `update-instance` command.|
- * | `-s, --skip-confirm` | see `--skip-confirm` option for `update-instance` command.|
+ * | `-w, --wipe` | see `--wipe` option for `update-instance` and `update-scenario` command.|
+ * | `-s, --skip-confirm` | see `--skip-confirm` option for `update-instance` and `update-scenario` command.|
  *
  * @global
  * @name update

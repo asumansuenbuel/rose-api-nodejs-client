@@ -3,7 +3,7 @@ const { bold, green, blue } = require('chalk');
 const { formatText } = require('./cli-utils');
 const format = formatText;
 
-const helpTexts = {
+const help = {
     commands: {
 	rose: format("The RoseStudio command line interface allows to access artifacts and"
 		     + " resource from the RoseStudio website from the local command line."
@@ -83,7 +83,12 @@ const helpTexts = {
 	updateScenario: {
 	    full: "If specified, all instances of the scenario class that are associated with a"
 		+ " local folder are updated after the scenario class has been updated with the"
-		+ " content of the local folder."
+		+ " content of the local folder.",
+	    wipe: "Only used when `--full` is given; option is then used while updating the"
+		+ " connected instances of the scenario class.",
+	    skipConfirm: "Only used when `--full` is given; option is then used while updating the"
+		+ " connected instances of the scenario class.",
+	    instancesOnly: "Only updates the instances of the scenario class; the scenario class itself is not updated on the Rose server."
 	},
 	updateInstance: {
 	    noClassUpdate: "By default, the code from the corresponding scenario class is"
@@ -91,12 +96,20 @@ const helpTexts = {
 	    wipe: "If set, wipes out the contents of the instance folder prior to populating"
 		+ " it with updated content from the scenario class. Otherwise, the new content"
 		+ " will be copied on top of any existing content in the instance folder.",
-	    skipConfirm: "If wipe option is set, then by default, the user is asked interactively"
-		+" to confirm the wiping out of the instance folder contents. Setting this option"
-		+ " skips this confirmation."
+	    skipConfirm: "By default, the user is asked interactively"
+		+" to confirm the wiping out or overwriting of the instance folder contents."
+		+ " Setting this option skips this confirmation."
 	}
     }
 }
+
+const messages = {
+    confirmWipeInstanceFolder: `About to copy files into instance folder "{0}";`
+	+` all current content will be wiped out. Do you want to continue?`,
+    confirmOverwriteInstanceFolder: `About to copy files into instance folder "{0}";`
+	+` files will be overwritten. Do you want to continue?`
+}
+
 
 const formatStringsInObject = obj => {
     Object.keys(obj).forEach(key => {
@@ -111,17 +124,17 @@ const formatStringsInObject = obj => {
     return obj;
 };
 
-module.exports = helpTexts;
+module.exports = { help, messages }
 
 if (require.main === module) {
     let cmd = process.argv[2];
     let parts = cmd.split('.');
     let s;
     if (parts.length === 2) {
-	let copt = helpTexts.commandOptions[parts[0]]
+	let copt = help.commandOptions[parts[0]]
 	s = copt[parts[1]]
     } else {
-	s = helpTexts.commands[cmd];
+	s = help.commands[cmd];
     }
     console.log(s);
 }
