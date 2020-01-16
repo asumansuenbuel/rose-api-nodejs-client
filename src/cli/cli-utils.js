@@ -25,6 +25,12 @@ const _output = msg => {
 	if (json.error) return json.error;
 	return JSON.stringify(json, null, 2);
     }
+    if (typeof process.stdout.columns === 'number') {
+	let columns = process.stdout.columns;
+	if (msg.length >= columns) {
+	    msg = formatText(msg, Math.trunc(columns * 0.8), '');
+	}
+    }
     return msg;
 }
 
@@ -219,7 +225,7 @@ const formatText = (text, lineLength = 80, indent = '') => {
 	    }
 	});
     }
-    const formattedText = lines.map(words => words.join(' ')).join('\n');
+    const formattedText = lines.map(words => words.join(' ').trim()).join('\n');
     return formattedText;
 }
 

@@ -79,14 +79,20 @@ class RoseFolder {
 	});
     }
 
-    _selectFromExisting(questionText, entityName, queryTerm) {
+    _selectFromExisting(questionText, entityName, queryTerm, options) {
 	let type = 'list';
 	let name = 'result';
 	let message = questionText;
+	let { filter } = options;
 	return new Promise((resolve, reject) => {
 	    this.rose.findEntities(entityName, queryTerm, (err, records) => {
 		if (err) return reject(err);
-		let { uniqueNameList, hash } = getUniqueNameListAndHash(records);
+		let ffun = (typeof filter === 'function') ? filter : (() => true)
+		let frecords = records.filter(ffun);
+		if (frecords.length === 0) {
+		    return resolve(null);
+		}
+		let { uniqueNameList, hash } = getUniqueNameListAndHash(frecords);
 		let choices = uniqueNameList;
 		let question = { type, name, message, choices };
 		inquirer
@@ -400,15 +406,33 @@ class RoseFolder {
 	    .then(answer => {
 		if (answer === "I") {
 		    let connectionObject;
+		    let infoByUuid = this.infoByUuid;
 		    this._selectFromExisting('Select an existing scenario class',
 					     'connections',
-					     { CLASS_UUID: '$isnull' })
+					     { CLASS_UUID: '$isnull' },
+					     {
+						 filter: cobj => {
+						     let uuid = cobj.UUID;
+						     if (uuid in infoByUuid) {
+							 //console.log(`already connected: scenario class ${cobj.NAME}...`);
+							 return false;
+						     }
+						     return true;
+						 }
+					     })
 			.then(connObj => {
+			    if (!connObj) {
+				cliInfo('no scenario classes found that can be connected to a local folder; '
+					+ 'that usually means that all scenarios on the Rose server '
+					+ 'that you have access to are already connected to local folder(s).');
+				return Promise.resolve(null);
+			    }
 			    connectionObject = connObj;
 			    let msg = 'Please enter a folder name for the code files';
 			    return this._getCleanFolderName(msg, connObj.NAME);
 			})
 			.then(folder => {
+			    if (!folder) return Promise.resolve(null);
 			    let hasCodeOnServer = this.rose.hasCodeOnServer(connectionObject);
 			    if (hasCodeOnServer) {
 				cliInfo(`downloading code from RoseStudio into `
@@ -431,6 +455,7 @@ class RoseFolder {
 			    return hasCodeOnServer ? _download() : Promise.resolve(folder);
 			})
 			.then(folder => {
+			    if (!folder) return Promise.resolve(null);
 			    return new Promise((resolve, reject) => {
 				try {
 				    const isClass = true;
