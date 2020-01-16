@@ -4,11 +4,11 @@
  */
 
 const { join, isAbsolute, resolve, sep, basename, dirname } = require('path');
-const { mkdirSync, rmdir, existsSync, readdirSync, lstatSync, unlink } = require('fs')
+const { mkdirSync, rmdir, existsSync, readdirSync, readFileSync, lstatSync, unlink } = require('fs')
 const { inred, ingreen, inblue, inyellow, inblack, inmagenta, incyan } = require('./colorize');
 
 const config = require('./config')
-const isBinaryFile = require('isbinaryfile');
+const { isBinaryFileSync } = require('isbinaryfile');
 
 /**
  * determines whether the value needs to be quoted or not for
@@ -251,12 +251,13 @@ const stringContainsPreprocessorSyntax = string => {
 
 const fileContainsPreprocessorSyntax = filename => {
     try {
-	if (isBinaryFile.sync(filename)) {
+	if (isBinaryFileSync(filename)) {
 	    return false;
 	}
-	let contents = fs.readFileSync(filename, 'utf-8');
+	let contents = readFileSync(filename, 'utf-8');
 	return stringContainsPreprocessorSyntax(contents);
     } catch (err) {
+	console.error(err);
 	return false;
     }
     

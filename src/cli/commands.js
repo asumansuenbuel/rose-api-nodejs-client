@@ -344,7 +344,10 @@ class Commands {
 			if (pathInfo && CLASS_UUID) {
 			    if (options.update) {
 				//cliInfo('updating instance folder...');
-				this.cli_updateInstance(name)
+				let updateOptions = {
+				    classUpdate: true
+				}
+				this.cli_updateInstance(name, updateOptions)
 				    .then(() => {
 					//cliInfo('done.');
 				    })

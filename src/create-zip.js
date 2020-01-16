@@ -67,7 +67,10 @@ class ZipFile {
      * folder, i.e. the folder itself is not added to the zipfile.
      */
     addFolderRecursively(folder, rootFolder = folder, options) {
-	const { dryRun, debug, debugIndent, fileFilterFunction } = options || {};
+	const { dryRun, debug, debugIndent,
+		fileFilterFunction,
+		whitelistFileFilterFunction,
+		filesAdded } = options || {};
 	const indent = (typeof debugIndent === 'string') ? debugIndent : '';
 	debug && console.log(`${indent}addFolderRecursively("${folder}", rootFolder="${rootFolder}")...`);
 	const fileFilter = (typeof fileFilterFunction === 'function')
@@ -92,13 +95,25 @@ class ZipFile {
 		this.addFolderRecursively(filepath, rootFolder, options);
 		return;
 	    }
+	    if (typeof whitelistFileFilterFunction === 'function') {
+		//console.log(`checking ${filepath}...`);
+		if (!whitelistFileFilterFunction(filepath)) {
+		    //console.log(`no pp file: ${filepath}`)
+		    return;
+		}
+		//console.log(`whitelisted: ${filepath}`)
+		if (Array.isArray(filesAdded)) filesAdded.push(filepath);
+	    } else {
+		if (Array.isArray(filesAdded)) filesAdded.push(filepath);
+	    }
 	    const name = relative(rootFolder, filepath);
 	    debug && console.log(`${indent}adding to zip: file: "${filepath}", name: "${ingreen(name)}"`);
 	    if (!dryRun) {
 		this.addFile(filepath, name);
 	    }
-	})
+	});
 	debug && console.log(`${indent}done addFolderRecursively("${folder}", rootFolder="${rootFolder}")...`);
+	return filesAdded || [];
     }
 
     getReadStream() {

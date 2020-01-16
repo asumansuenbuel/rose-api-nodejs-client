@@ -11,7 +11,8 @@ const helpTexts = {
 		     + " In particular, the command line interface enables to associate"
 		     + " local folders with scenario class and instances. More documentation at"
 		     + " https://rose-studio.cfapps.us10.hana.ondemand.com/doc/api/index.html."),
-	ls: "list the entities (robots, backend_systems, scenarios)"
+	ls: "list RoseStudio entities; the parameter `entity` can be one of \"robots\","
+	    + " \"systems\", \"scenarios\", or \"instances\""
 	    + " whose name matches the name-pattern."
 	    + " Alternatively, an object uuid can be provided in which case"
 	    + " information about the object with that uuid is shown."
@@ -86,7 +87,13 @@ const helpTexts = {
 	},
 	updateInstance: {
 	    noClassUpdate: "By default, the code from the corresponding scenario class is"
-		+ " first uploaded to the Rose server. Specifying this option omits that step"
+		+ " first uploaded to the Rose server. Specifying this option omits that step",
+	    wipe: "If set, wipes out the contents of the instance folder prior to populating"
+		+ " it with updated content from the scenario class. Otherwise, the new content"
+		+ " will be copied on top of any existing content in the instance folder.",
+	    skipConfirm: "If wipe option is set, then by default, the user is asked interactively"
+		+" to confirm the wiping out of the instance folder contents. Setting this option"
+		+ " skips this confirmation."
 	}
     }
 }

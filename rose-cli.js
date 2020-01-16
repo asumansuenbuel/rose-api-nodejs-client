@@ -132,7 +132,7 @@ program
  * @name ls
  */
 program
-    .command('ls <robots|systems|scenarios|instances> [name-pattern|uuid]')
+    .command('ls <entity> [name-pattern|uuid]')
     .option('-j, --json', help.commandOptions.common.json, false)
     .option('-u, --uuid', help.commandOptions.common.uuid, false)
     .option('-f, --fields <comma-separated-fields>',help.commandOptions.ls.fields, null)
@@ -329,16 +329,20 @@ program
  * `rose update-instance [options] <scenario-instance-folder>`
  *
  * #### Options
- * |Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Description|
- * |-|-|
- * | `-n, --no-class-update` | By default, the code from the corresponding scenario class is first uploaded to the Rose server. Specifying this option omits that step.|
+ * |Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Description|Default Value|
+ * |-|-|-|
+ * | `-n, --no-class-update` | By default, the code from the corresponding scenario class is first uploaded to the Rose server. Specifying this option omits that step.|false|
+ * | `-w, --wipe`| if set, wipes out the contents of the instance folder prior to populating it with updated content from the scenario class. Otherwise, the new content will be copied on top of any existing content in the instance folder.|false|
+ * | `-s, --skip-confirm` | If wipe option is set, then by default, the user is asked interactively to confirm the wiping out of the instance folder contents. Setting this option skips this confirmation.| false |
  *
  * @global
  * @name update-instance
  */
 program
     .command('update-instance <scenario-instance-folder>')
-    .option('-n, --no-class-update', help.commandOptions.updateInstance)
+    .option('-n, --no-class-update', help.commandOptions.updateInstance.noClassUpdate, true)
+    .option('-w, --wipe', help.commandOptions.updateInstance.wipe, false)
+    .option('-s, --skip-confirm', help.commandOptions.skipConfirm, false)
     .action(commands.updateInstance)
     .description(help.commands.updateInstance)
 
@@ -353,14 +357,18 @@ program
  * |-|-|
  * | `-f, --full` | see `--full` option for `update-scenario` command.|
  * | `-n, --no-class-update` | see `--no-class-update` option for `update-instance` command.|
+ * | `-w, --wipe` | see `--wipe` option for `update-instance` command.|
+ * | `-s, --skip-confirm` | see `--skip-confirm` option for `update-instance` command.|
  *
  * @global
  * @name update
  */
 program
     .command('update <scenario-class-or-instance-folder>')
-    .option('-n, --no-class-update', help.commandOptions.updateInstance.noUpdate)
     .option('-f, --full', help.commandOptions.updateScenario.full)
+    .option('-n, --no-class-update', help.commandOptions.updateInstance.noClassUpdate, true)
+    .option('-w, --wipe', help.commandOptions.updateInstance.wipe, false)
+    .option('-s, --skip-confirm', help.commandOptions.skipConfirm, false)
     .action(commands.updateScenarioOrInstance)
     .description(help.commands.update)
 
@@ -406,7 +414,7 @@ program
  * Shows the Rose CLI version in the form X.Y.Z
  *
  * #### Usage
- * `rose open <name-pattern>`
+ * `rose version`
  * @global
  * @name version
  */

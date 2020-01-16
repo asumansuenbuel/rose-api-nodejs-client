@@ -1099,7 +1099,7 @@ class RoseAPI {
 	const cb = (typeof optionsOrCallback === 'function')
 	      ? optionsOrCallback : ensureFunction(callback);
 	const options = (typeof optionsOrCallback === 'object') ? optionsOrCallback : {};
-	const { dryRun, debug, deleteFilter, sourceFolderInfo } = options;
+	const { dryRun, debug, deleteFilter, clearFolder, sourceFolderInfo } = options;
 
 	const getSourceCodeFolder = (cb1) => {
 	    this.api_getConnection(uuid, (err, cobj) => {
@@ -1114,7 +1114,7 @@ class RoseAPI {
 		}
 		if (this._isLocalScenarioInstance(cobj)) {
 		    if (typeof sourceFolderInfo !== 'object') {
-			let msg = `scenarion instance "${NAME} is marked as "local" and `
+			let msg = `scenario instance "${NAME} is marked as "local" and `
 			    + `therefore requires "sourceFolderInfo" to be specified, which `
 			    + `is missing from the options argument`;
 			return cb1(msg);
@@ -1141,7 +1141,7 @@ class RoseAPI {
 	    });
 	}
 	
-	const getCodeFromServer = () => {
+	const getCodeFromServer = (clearFolder) => {
 	    this.api_getCodeZip(uuid, (err, buf) => {
 		if (err) {
 		    return cb(err);
@@ -1150,7 +1150,7 @@ class RoseAPI {
 		    if (err) {
 			return cb(err);
 		    }
-		    const options = { dryRun, debug, clearFolder: true, deleteFilter };
+		    const options = { dryRun, debug, clearFolder, deleteFilter };
 		    zipFile.extractToFolder(targetFolder, options, err => {
 			if (err) {
 			    return cb(err);
@@ -1171,12 +1171,23 @@ class RoseAPI {
 	    if (typeof sourceFolder === 'string') {
 		const srcZip = new ZipFile();
 		try {
-		    srcZip.addFolderRecursively(sourceFolder, sourceFolder, options);
+		    //console.log('copying local files...');
+		    let addFolderOptions = {};
+		    srcZip.addFolderRecursively(sourceFolder, sourceFolder, addFolderOptions);
+		    let options = { dryRun, debug, clearFolder, deleteFilter };
+		    srcZip.extractToFolder(targetFolder, options, err => {
+			//console.log('copying local files done.');
+			if (err) {
+			    return cb(err);
+			}
+			getCodeFromServer(false);
+		    });
 		} catch (err) {
+		    console.error(err);
 		    return cb(err);
 		}
 	    } else {
-		getCodeFromServer();
+		getCodeFromServer(true);
 	    }
 	});
     };
@@ -1245,9 +1256,12 @@ class RoseAPI {
 	const _doUpload = isLocal => {
 	    const zip = new ZipFile();
 	    if (isLocal) {
-		options.whitelistFileFilterFunction = fileContainsPreprocessorSyntax
+		options.whitelistFileFilterFunction = fileContainsPreprocessorSyntax;
+		options.debug = false;
 	    }
+	    let filesAdded = [];
 	    try {
+		options.filesAdded = filesAdded;
 		zip.addFolderRecursively(sourceFolder, sourceFolder, options);
 	    } catch (err) {
 		return cb(err);
@@ -1267,7 +1281,7 @@ class RoseAPI {
 		    return cb(err);
 		}
 		debug && console.log(`upload successful.`);
-		cb(null, res.toString());
+		cb(null, filesAdded);
 	    });
 	};
 

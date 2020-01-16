@@ -249,6 +249,9 @@ class RoseFolder {
     }
 
     getFolderNameFromFolderKey(fullpath) {
+	if (typeof fullpath !== 'string') {
+	    return null;
+	}
 	return path.relative(fs.realpathSync('.'), fullpath);
     }
 
@@ -633,7 +636,7 @@ class RoseFolder {
 		    })
 		    .then(({ doUpdate }) => {
 			if (doUpdate) {
-			    return this.updateInstanceFolder(folder);
+			    return this.updateInstanceFolder(folder).catch(cliError);
 			} else {
 			    let msg = `You can always run "rose update ${folder}" to download `
 				+ `the updated instance code.`;
@@ -733,19 +736,21 @@ class RoseFolder {
 	    return cliError(errmsgNoInfo);
 	}
 	const uuid = finfo.object.UUID;
+	const isLocal = finfo.object.UUID;
 	if (finfo.object.CLASS_UUID) {
 	    let msg = `Folder "${folder}" doesn't seem to be connected to a scenarion class; `
 		+ 'please specify a folder that is connected to an RoseStudio scenario class.';
 	    return cliError(msg);
 	}
-	cliInfo(`uploading contents of folder "${folder}"...`, true);
+	cliInfo(`uploading to scenario "${finfo.object.NAME}"...`, true);
 	const ptimer = cliStartProgress();
-	this.rose.uploadCodeTemplate(uuid, folder, (err, result) => {
+	this.rose.uploadCodeTemplate(uuid, folder, (err, filesAdded) => {
 	    cliStopProgress(ptimer);
 	    if (err) {
 		return cliError(err);
 	    }
-	    cliInfo('done.');
+	    cliInfo(`uploaded ${filesAdded.length} files to RoseStudio.`);
+	    console.log(filesAdded);
 	    if (!internalOptions.instanceFolders && !options.full) {
 		cliInfo(`instance folders not updated; specify "--full" options to`
 			+ ` automatically update all instance folder.`);
@@ -766,6 +771,7 @@ class RoseFolder {
 		}
 		let ifolder = instanceFolders.shift();
 		options.classUpdate = false;
+		options.internalCall = true;
 		this.updateInstanceFolder(ifolder, options)
 		    .then(() => {
 			updateNextInstanceFolder();
@@ -777,7 +783,7 @@ class RoseFolder {
     }
 
     updateInstanceFolder(folder, options = {}, internalOptions = {}) {
-	const { classUpdate } = options;
+	const { classUpdate, internalCall, wipe, skipConfirm } = options;
 	const finfo = this.getFolderInfo(folder);
 	const errmsgNoInfo = `no rose information found for "${folder}"; `
 	      + 'please specify a folder that is connected to a RoseStudio scenario instance.';
@@ -788,44 +794,76 @@ class RoseFolder {
 	    return cliError(errmsgNoInfo);
 	}
 	const uuid = finfo.object.UUID;
+	const instanceName = finfo.object.NAME;
 	const classUuid = finfo.object.CLASS_UUID;
+	const isLocal = !!finfo.object.ISLOCAL;
 	if (!classUuid) {
 	    let msg = `Folder "${folder}" doesn't seem to be connected to a scenarion instance; `
 		+ 'please specify a folder that is connected to an RoseStudio scenario instance.';
 	    return cliError(msg);
 	}
+	if (isLocal && !options.classUpdate && !internalCall) {
+	    let msg = `scenario instance "${instanceName}" is marked as "local"; `
+		+ `--no-class-update can't be used here.`;
+	    return cliError(msg);
+	}
+	const classFolderKey = this.getClassFolderKey(folder);
+	const classFolder = this.getFolderNameFromFolderKey(classFolderKey)
 	if (options.classUpdate) {
-	    const internalOptions = { uuid: classUuid, instanceFolders: [folder] }
-	    const classFolderKey = this.getClassFolderKey(folder);
 	    if (!classFolderKey) {
 		cliInfo(`no scenario class found in local folder; downloading just the instance`
 			+ ` code from the RoseStudio server.`);
 	    } else {
-		const classFolder = this.getFolderNameFromFolderKey(classFolderKey)
+		const internalOptions = { uuid: classUuid, instanceFolders: [folder] }
 		cliInfo(`updating scenario class folder "${classFolder}"...`);
-		this.updateScenarioFolder(classFolder, {}, internalOptions);
-		return;
+		return this.updateScenarioFolder(classFolder, {}, internalOptions);
 	    }
 	}
+	let sourceFolderInfo = null;
+	if (isLocal) {
+	    if (classFolderKey) {
+		let classInfo = this.getFolderInfo(classFolder);
+		//console.log(classInfo);
+		sourceFolderInfo = {
+		    folder: classFolder,
+		    uuid: classInfo.object ? classInfo.object.UUID : null
+		};
+	    } else {
+		let msg = `scenario class for instance "${instanceName}" cannot be found in local`
+		    + ` folder tree; a folder connected to the instance's scenario class is required`
+		    + ` to be present for scenarios marked as "local"`;
+		return cliError(msg);
+	    }
+	}
+	let confirmPromise = Promise.resolve({ ok: true });
 	//console.log(`found instance object uuid in folder ${folder}`);
-	return new Promise((resolve, reject) => {
-	    cliInfo(`downloading the instance code for "${folder}"...`, true);
-	    const ptimer = cliStartProgress();
-	    const deleteFilter = filename => {
-		if (filename === roseInitFilename) {
-		    return false;
+	return confirmPromise
+	    .then(({ ok }) => {
+		if (!ok) {
+		    return Promise.resolve(false);
+		} else {
+		    return new Promise((resolve, reject) => {
+			cliInfo(`downloading/copying the code for "${folder}"...`, true);
+			const ptimer = cliStartProgress();
+			const deleteFilter = filename => {
+			    if (filename === roseInitFilename) {
+				return false;
+			    }
+			    return true
+			};
+			let options = { clearFolder: wipe, sourceFolderInfo, deleteFilter };
+			this.rose.downloadCode(uuid, folder, options, (err, result) => {
+			    cliStopProgress(ptimer);
+			    if (err) {
+				return reject(err);
+			    }
+			    cliInfo('done.');
+			    resolve(true);
+			});
+		    })
 		}
-		return true
-	    };
-	    this.rose.downloadCode(uuid, folder, { deleteFilter }, (err, result) => {
-		cliStopProgress(ptimer);
-		if (err) {
-		    return reject(err);
-		}
-		cliInfo('done.');
-		resolve();
-	    });
-	})
+	    })
+	    .catch(cliError)
     }
 
     updateScenarioOrInstance(folder, options) {
