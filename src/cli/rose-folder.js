@@ -80,7 +80,7 @@ class RoseFolder {
     }
 
     _selectFromExisting(questionText, entityName, queryTerm, options) {
-	let type = 'list';
+	let type = 'rawlist';
 	let name = 'result';
 	let message = questionText;
 	let { filter } = options;
@@ -413,8 +413,12 @@ class RoseFolder {
 					     {
 						 filter: cobj => {
 						     let uuid = cobj.UUID;
+						     let isLocal = !!cobj.ISLOCAL;
 						     if (uuid in infoByUuid) {
 							 //console.log(`already connected: scenario class ${cobj.NAME}...`);
+							 return false;
+						     }
+						     if (isLocal) {
 							 return false;
 						     }
 						     return true;

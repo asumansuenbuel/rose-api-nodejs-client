@@ -433,6 +433,13 @@ program
     })
     .description('display the current Rose CLI/API version')
 
+program
+    .command('update-rose-command', { noHelp: true })
+    .action(() => {
+	cliInfo('npm install git+https://github.com/asumansuenbuel/rose-api-nodejs-client.git');
+    })
+
+
 const parsed = program.parse(process.argv);
 
 const commandName = parsed.rawArgs[2];
