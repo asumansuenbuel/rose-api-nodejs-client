@@ -1270,7 +1270,16 @@ class RoseAPI {
 	const _doUpload = isLocal => {
 	    const zip = new ZipFile();
 	    if (isLocal) {
-		options.whitelistFileFilterFunction = fileContainsPreprocessorSyntax;
+		options.whitelistFileFilterFunction = fpath => {
+		    if (fileContainsPreprocessorSyntax(fpath)) {
+			return true;
+		    }
+		    let { join } = require('path');
+		    if (join(sourceFolder, 'README.md') === fpath) {
+			return true;
+		    }
+		    return false;
+		};
 		options.debug = false;
 	    }
 	    let filesAdded = [];

@@ -15,7 +15,7 @@ const { blue } = require('chalk');
 const { help } = require('./src/cli/help-texts')
 
 const _getRegisteredCommands = () => {
-    const registeredCommands = program.commands.map(cmd => cmd.name());
+    const registeredCommands = program.commands.filter(cmd => !cmd._noHelp).map(cmd => cmd.name());
     return registeredCommands;
 }
 

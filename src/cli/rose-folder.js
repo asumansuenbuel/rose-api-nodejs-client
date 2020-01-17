@@ -220,6 +220,49 @@ class RoseFolder {
 	fs.writeFileSync(initFile, JSON.stringify(json), 'utf-8');
     }
 
+    /**
+     * updates the folder info stored for the given folder by
+     * contacting the Rose server for any updated information. Returns
+     * a Promise.
+     */
+    _updateFolderInfo(folder) {
+	const finfo = this.getFolderInfo(folder)
+	if (!finfo || !finfo.object) {
+	    console.log(`no rose information found for folder "${folder}"`);
+	    return Promise.resolve({})
+	}
+	cliInfo(`checking for updated folder info for "${folder}"...`, true);
+	const ptimer = cliStopProgress();
+	const obj = finfo.object;
+	return new Promise((resolve, reject) => {
+	    this.rose.getConnection(obj.UUID, (err, cobj) => {
+		cliStopProgress(ptimer);
+		cliInfo('');
+		if (err) {
+		    return reject(err);
+		}
+		const fields = ['NAME', 'ISLOCAL', 'CLASS_UUID'];
+		let changeDetected = false;
+		for(let i = 0; i < fields.length && !changeDetected; i++) {
+		    let fld = fields[i];
+		    let oldVal = obj[fld];
+		    let newVal = cobj[fld];
+		    if (oldVal !== newVal) {
+			cliInfo(dim(`  value of field "${fld}" has changed.`));
+			changeDetected = true;
+		    }
+		}
+		if (changeDetected) {
+		    let object = cobj;
+		    let isClass = !cobj.CLASS_UUID;
+		    this._writeFolderInfo(folder, isClass, object);
+		    cliInfo(dim(`  folder info updated in local folder.`));
+		}
+		resolve(changeDetected);
+	    });
+	});
+    }
+
     getFolderInfo(folder) {
 	let infoKey = this.getFolderInfoKey(folder); //path.resolve(folder);
 	return this.$info[infoKey];
@@ -799,6 +842,20 @@ class RoseFolder {
     }
 
     updateScenarioFolder(folder, options = {}, internalOptions = {}) {
+	let updateFolderPromise;
+	if (internalOptions.internalCall) {
+	    updateFolderPromise = Promise.resolve(false);
+	} else {
+	    updateFolderPromise = this._updateFolderInfo(folder);
+	}
+	return updateFolderPromise
+	    .then(hasChanged => {
+		return this._updateScenarioFolder(folder, options, internalOptions);
+	    })
+	    .catch(cliError)
+    }
+    
+    _updateScenarioFolder(folder, options = {}, internalOptions = {}) {
 	const finfo = this.getFolderInfo(folder);
 	const errmsgNoInfo = `no rose information found for "${folder}"; `
 	      + 'please specify a folder that is connected to a RoseStudio scenario class.';
@@ -866,6 +923,20 @@ class RoseFolder {
     }
 
     updateInstanceFolder(folder, options = {}, internalOptions = {}) {
+	let updateFolderPromise;
+	if (internalOptions.internalCall) {
+	    updateFolderPromise = Promise.resolve(false);
+	} else {
+	    updateFolderPromise = this._updateFolderInfo(folder);
+	}
+	return updateFolderPromise
+	    .then(hasChanged => {
+		return this._updateInstanceFolder(folder, options, internalOptions);
+	    })
+	    .catch(cliError);
+    }
+    
+    _updateInstanceFolder(folder, options = {}, internalOptions = {}) {
 	const { classUpdate, internalCall, wipe, skipConfirm } = options;
 	const finfo = this.getFolderInfo(folder);
 	const errmsgNoInfo = `no rose information found for "${folder}"; `
