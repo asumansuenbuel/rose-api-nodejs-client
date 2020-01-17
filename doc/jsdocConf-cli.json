@@ -9,6 +9,7 @@
     "opts": {
 	"template": "doc/jsdoc-template-cli",
 	"sort": false,
+	"tutorials": "doc/tutorials",
 	"destination": "../asu-dev-startups/public/doc/cli"
     },
     "default": {
