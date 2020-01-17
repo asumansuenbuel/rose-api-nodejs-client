@@ -24,7 +24,7 @@ const request = require('request');
 const { Server, Auth, Settings } = require('./config');
 const ZipFile = require('./create-zip');
 
-const { fileContainsPreprocessorSyntax } = require('./server_utils');
+const { fileContainsPreprocessorSyntax, mergeOnto } = require('./server_utils');
 
 const RoseJsonDecorator = '%JSN';
 
@@ -913,9 +913,45 @@ class RoseAPI {
 	return jsonObj.configJsonObj || {};
     }
 
+    
     /**
      * retrieve the config json object of the connection class or
-     * instance
+     * instance using the object structure itself.  If this method is
+     * called on an instance, an effort is made to merge the
+     * corresponding class' configJson onto the instance's one.
+     * @param {object} obj - the connection class or instance object
+     * @param {callback} callback - the callback function for receiving the config-json
+     * @global
+     * @alias getConnectionConfigJsonFromObject
+     */
+    api_getConnectionConfigJsonFromObject(obj, callback) {
+	const cb = ensureFunction(callback);
+	const configJson = this.api_getConfigJsonFromObject(obj);
+	if (obj.CLASS_UUID) {
+	    // merge class configJson onto the instance's one:
+	    //console.log(`merge class configJson onto the instance's one...`);
+	    this.api_getConnection(obj.CLASS_UUID, (err, cobj) => {
+		if (!err) {
+		    let classConfigJson = this.api_getConfigJsonFromObject(cobj);
+		    try {
+			mergeOnto(classConfigJson, configJson);
+			//configJson.merged = true;
+		    } catch(err0) {
+			console.error(err0);
+		    }
+		}
+		cb(null, configJson);
+	    });
+	} else {
+	    cb(null, configJson);
+	}
+    }
+    
+    /**
+     * retrieve the config json object of the connection class or
+     * instance.  If this method is called on an instance, an effort
+     * is made to merge the corresponding class' configJson onto the
+     * instance's one.
      * @param {string} uuid - the uuid of the connection class or instance object
      * @param {callback} callback - the callback function; config-json
      * object is passed as second parameter.
@@ -924,16 +960,21 @@ class RoseAPI {
      */
     api_getConnectionConfigJson(uuid, callback) {
 	const cb = ensureFunction(callback);
+	this.api_getConnection(uuid, (err, obj) => {
+	    if (err) {
+		return cb(err);
+	    }
+	    this.api_getConnectionConfigJsonFromObject(obj, cb);
+	});
+	/*
 	this._getConnectionJSON(uuid, (err, jsonObj) => {
 	    if (err) {
 		return cb(err);
 	    }
-	    const { configJsonObj } = jsonObj;
-	    if (!configJsonObj) {
-		return cb(null, {});
-	    }
+	    const configJsonObj = jsonObj.configJsonObj || {};
 	    cb(null, configJsonObj);
 	})
+	*/
     }
 
     // -----------------------------------------------------------------------------
@@ -941,13 +982,19 @@ class RoseAPI {
     /**
      * Updates the config-json of a connection class or instance.
      * @param {string} uuid - the uuid of a connection class or instance object
-     * @param {object|string} configJson - the configJson to be updated.
+     * @param {object} configJson - the configJson to be updated; must be a "stringify-able" JSON object.
      * @param {callback} callback - callback function, called with the
      * resulting new instance object as second argument.
      * @global
      * @alias updateConnectionConfigJson
      */
     api_updateConnectionConfigJson(uuid, configJson, callback) {
+	try {
+	    JSON.stringify(configJson);
+	} catch(err) {
+	    let msg = `Cannot update config; the config must be a valid, "stringify-able" JSON object`;
+	    return callback(msg);
+	}
 	this.api_getConnection(uuid, (err, obj) => {
 	    if (err) {
 		return callback(err);

@@ -94,7 +94,9 @@ const editFile = (filename, callback) => {
 	}
 	const hasChanged = contentBefore !== contentAfter;
 	if (typeof callback === 'function') {
-	    callback(contentAfter, hasChanged);
+	    callback(contentAfter, hasChanged, () => {
+		editFile(filename, callback);
+	    });
 	}
     });
 };

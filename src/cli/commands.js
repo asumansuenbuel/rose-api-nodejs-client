@@ -69,13 +69,22 @@ class Commands {
 	_findInNextEntity();
     }
 
-    cli_open(namePattern, options = {}) {
+    cli_open(namePatternOrFolder, options = {}) {
+	const rfolder = new RoseFolder(this.rose);
+
 	const _open = url => {
 	    cliInfo(`opening ${url}...`, true);
 	    openUrlInBrowser(url);
 	    cliInfo('done.');
 	}
-	
+	const finfo = rfolder.getFolderInfo(namePatternOrFolder);
+	if (finfo && finfo.object) {
+	    let entity = 'CONNECTIONS';
+	    let url = this.rose.getRoseStudioEntityPageUrl(entity, finfo.object.UUID);
+	    return _open(url);
+	}
+
+	const namePattern = namePatternOrFolder;
 	if (namePattern) {
 	    this._findInAnyEntity(namePattern, (err, records, entity) => {
 		if (err) {
@@ -83,6 +92,7 @@ class Commands {
 		}
 		if (records.length === 0) {
 		    //cliError('nothing to open...');
+		    return;
 		}
 		let obj = records[0];
 		let url = this.rose.getRoseStudioEntityPageUrl(entity, obj.UUID);
@@ -316,51 +326,75 @@ class Commands {
 	return rfolder.updateScenarioOrInstance(folder, options);
     }
 
+    cli_showConfig(name, options = {}) {
+	options._show = true;
+	this.cli_edit(name, options);
+    }
+
     cli_edit(name, options = {}) {
 	const pathInfo = this._checkForRoseInfoInFolder(name);
 
 	const _doEdit = (err, obj) => {
 	    if (err) return cliError(err);
 	    const { UUID, CLASS_UUID, NAME } = obj;
-	    const configJson = this.rose.getConfigJsonFromObject(obj);
-	    const cstr = JSON.stringify(configJson, null, 2);
-	    
-	    editString(cstr, "json", (newContent, hasChanged) => {
-		if (!hasChanged) {
-		    cliInfo('no changes; nothing done');
-		    return;
+	    //const configJson = this.rose.getConfigJsonFromObject(obj);
+
+	    this.rose.getConnectionConfigJsonFromObject(obj, (err, configJson) => {
+		if (err) {
+		    return cliError(err);
 		}
-		try {
-		    const newConfigJson = JSON.parse(newContent);
-		    cliInfo(`updating config for "${NAME}"...`, true);
-		    const ptimer = cliStartProgress();
-		    this.rose.updateConnectionConfigJson(UUID, newConfigJson, (err, obj) => {
-			cliStopProgress(ptimer);
-			if (err) {
-			    return cliError(err);
-			}
-			//cliInfo(`config-json successfully updated on server for "${NAME}".`);
-			cliInfo('done.');
-			if (pathInfo && CLASS_UUID) {
-			    if (options.update) {
-				//cliInfo('updating instance folder...');
-				let updateOptions = {
-				    classUpdate: false,
-				    internalCall: true
-				}
-				this.cli_updateInstance(name, updateOptions)
-			    } else {
-				cliInfo(`instance folder hasn't been updated; please run `
-					+ `"rose update ${NAME}" to do that.`);
+		const cstr = JSON.stringify(configJson, null, 2);
+
+		if (options._show) {
+		    return cliInfo(cstr);
+		}
+		
+		editString(cstr, "json", (newContent, hasChanged, reopenEditor) => {
+		    if (!hasChanged) {
+			cliInfo('no changes; nothing done');
+			return;
+		    }
+		    try {
+			const newConfigJson = JSON.parse(newContent);
+			cliInfo(`updating config for "${NAME}"...`, true);
+			const ptimer = cliStartProgress();
+			this.rose.updateConnectionConfigJson(UUID, newConfigJson, (err, obj) => {
+			    cliStopProgress(ptimer);
+			    if (err) {
+				return cliError(err);
 			    }
-			} else {
-			    //cliInfo('done.');
+			    //cliInfo(`config-json successfully updated on server for "${NAME}".`);
+			    cliInfo('done.');
+			    if (pathInfo && CLASS_UUID) {
+				if (options.update) {
+				    //cliInfo('updating instance folder...');
+				    let updateOptions = {
+					classUpdate: false,
+					internalCall: true
+				    }
+				    this.cli_updateInstance(name, updateOptions)
+				} else {
+				    cliInfo(`instance folder hasn't been updated; please run `
+					    + `"rose update ${NAME}" to do that.`);
+				}
+			    } else {
+				//cliInfo('done.');
+			    }
+			});
+		    } catch (err) {
+			cliError(`config must be valid JSON: ${err}`);
+			if (typeof reopenEditor === 'function') {
+			    cliInfo('Re-opening editor in 5 seconds; Ctrl-C to abort...', true);
+			    let ptimer = cliStartProgress();
+			    setTimeout(() => {
+				cliStopProgress(ptimer);
+				cliInfo('');
+				reopenEditor();
+			    } , 5000);
 			}
-		    });
-		} catch (err) {
-		    cliError(`config must be valid JSON: ${err}`);
-		    return;
-		}
+			return;
+		    }
+		});
 	    });
 	}
 

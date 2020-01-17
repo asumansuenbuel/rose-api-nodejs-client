@@ -264,6 +264,52 @@ const fileContainsPreprocessorSyntax = filename => {
 }
 
 /**
+ * merges the masterObj onto obj; obj values will not be changed; new
+ * fields from masterObj will be added to obj
+ */
+const mergeOnto = (masterObj, obj) => {
+    if ((masterObj instanceof Array) && (obj instanceof Array)) {
+	mergeOntoArray(masterObj, obj)
+	return
+    }
+    for(let mprop in masterObj) {
+	let masterVal = masterObj[mprop]
+	if (mprop in obj) {
+	    let val = obj[mprop]
+	    if ((typeof masterVal === 'object') && (typeof val === 'object')) {
+		mergeOnto(masterVal, val)
+	    }
+	} else {
+	    obj[mprop] = masterVal
+	}
+    }
+}
+
+const mergeOntoArray = (masterArray, array) => {
+    const _isScalar = x => {
+	let t = typeof x
+	return ['string','number','boolean'].indexOf(t) >= 0
+    }
+    let masterAllScalar = masterArray.every(elem => _isScalar(elem))
+    let arrayAllScalar = array.every(elem => _isScalar(elem))
+    if (masterAllScalar && arrayAllScalar) {
+	masterArray.forEach(melem => {
+	    if (array.indexOf(melem) < 0) {
+		array.push(melem)
+	    }
+	})
+    } else {
+	if (masterArray.length > array.length) {
+	    let startIndex = array.length
+	    for (let i = startIndex; i < masterArray.length; i++) {
+		let melem = masterArray[i]
+		array.push(melem)
+	    }
+	}
+    }
+}
+
+/**
  * utility to chain promises. The function takes an array of functions
  * that return a Promise object as argument and returns the chained
  * Promise object.
@@ -286,5 +332,6 @@ module.exports = {
     removeFolderRecursively,
     stringContainsPreprocessorSyntax,
     fileContainsPreprocessorSyntax,
+    mergeOnto,
     PromiseChain
 }

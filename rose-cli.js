@@ -268,6 +268,17 @@ program
     .description(help.commands.createInstance)
 
 /**
+ * dumps the config-json of the scenario in the given folder or the
+ * one that matches the name pattern.
+ * @global
+ * @name show-config
+ */
+program
+    .command('show-config <scenario-folder|name-pattern>')
+    .action(commands.showConfig)
+    .description(help.commands.showConfig)
+
+/**
  * call the system editor to edit config of the scenario class or
  * instance that is associated with the given folder. The system
  * editor can be changed by setting the shell-level environment variable
