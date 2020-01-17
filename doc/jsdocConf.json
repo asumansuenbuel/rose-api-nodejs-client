@@ -6,6 +6,9 @@
     "plugins": [
         "plugins/markdown"
     ],
+    "tags": {
+        "allowUnknownTags": true
+    },
     "opts": {
 	"template": "doc/jsdoc-template",
 	"sort": false,

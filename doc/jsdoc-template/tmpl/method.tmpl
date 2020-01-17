@@ -1,7 +1,33 @@
 <?js
 var data = obj;
 var self = this;
+const getTagValue = tagname => {
+  if (!Array.isArray(data.tags)) {
+    return null;
+  }
+  for(let i = 0; i < data.tags.length; i++) {
+     let tag = data.tags[i];
+     let tagTitle = tag.title;
+     if (tagname.toLowerCase() === tagTitle) {
+     	console.log(`matched tag: ${tagname}`)
+     	return tag.text;
+     }
+  }
+  return null;
+};
 ?>
+<?js if (data.kind === 'function' && data.name.startsWith('___IGNORE')) { ?>
+  <?js if (data.kind !== 'module' && data.description && !data.hideconstructor) { ?>
+    <div class="description-only">
+      <?js let title = getTagValue('sectionTitle'); ?>
+      <?js if (title) { ?>
+        <h2><?js= title ?></h2>
+      <?js } ?>
+      <?js= data.description ?>
+    </div>
+  <?js } ?>
+<?js } else { ?>
+
 <?js if (data.kind !== 'module' && !data.hideconstructor) { ?>
     <?js if (data.kind === 'class' && data.classdesc) { ?>
     <h2>Constructor</h2>
@@ -128,4 +154,6 @@ var self = this;
 <?js if (data.examples && examples.length) { ?>
     <h5>Example<?js= examples.length > 1? 's':'' ?></h5>
     <?js= this.partial('examples.tmpl', examples) ?>
+<?js } ?>
+
 <?js } ?>

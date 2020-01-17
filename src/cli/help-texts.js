@@ -16,7 +16,7 @@ const help = {
 	    + " whose name matches the name-pattern."
 	    + " Alternatively, an object uuid can be provided in which case"
 	    + " information about the object with that uuid is shown."
-	    + " In order to list the instances of a scenarion class, the format"
+	    + " In order to list the instances of a scenario class, the format"
 	    + "\n-\t" + bold('"ls [options] instances <name-pattern|uuid>"') + "\n"
 	    + "can be used. In this case, the name (pattern)"
 	    + " must uniquely describe a scenario class.",
@@ -33,7 +33,7 @@ const help = {
 	    + " been initialized using the \"init-scenario\" command.",
 	createInstance: bold("[interactive]") + " same as \"init-instance --create ...\"",
 	updateInstance: "runs code generation on the rose server and downloads the code to the folder"
-	    + " which must be one that is connected to a scenarion instance."
+	    + " which must be one that is connected to a scenario instance."
 	    + " If the corresponding scenario class is connected to a local sub-folder then its"
 	    + " code is uploaded to the server prior to code-generation and download of the"
 	    + " instance code",

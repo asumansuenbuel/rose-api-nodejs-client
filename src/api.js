@@ -261,7 +261,17 @@ class RoseAPI {
     // -----------------------------------------------------------------------------
 
     /**
-     * returns the RoseStudio server url that is used for api calls
+     *
+     * This group of methods provides general information about the connected Rose server.
+     *
+     * @sectionTitle General Methods
+     * @global
+     */
+    ___IGNORE() {}
+
+    
+    /**
+     * @returns {string} the RoseStudio server url that is used for api calls
      * @global
      * @alias getServerUrl
      */
@@ -341,6 +351,22 @@ class RoseAPI {
     // -----------------------------------------------------------------------------
     
     /**
+     *
+     * The following methods are about retrieving information about
+     * objects stored in the RoseStudio server. Currently, there are
+     * three kinds of objects: backend systems, robots, connections
+     * (or scenarios). Those are referred to as entities in the
+     * methods. The corresponding values for `entityName` are
+     * "backend_systems", "robots", and "connections". The term "scenario"
+     * is used interchangably with "connections".
+     *
+     * @sectionTitle Retrieval Methods
+     * @global
+     */
+    ___IGNORE() {}
+
+    
+    /**
      * returns all objects of the given entity from Rose
      * @param {entityName} entityName - the entity for the objects
      * (backend_systems, robots, or connections)
@@ -392,6 +418,7 @@ class RoseAPI {
     }
 
     /**
+     * returns only those connection objects that represent class objects.
      * @see getEntities
      * @global
      * @alias getConnectionClasses
@@ -423,7 +450,9 @@ class RoseAPI {
     }
 
     /**
-     * @see getEntity
+     * same as {@link getEntity} called with entityName='backend_systems'
+     * @param {string} uuid - the uuid of the object to be retrieved
+     * @param {callback} callback - callback function for processing the result
      * @global
      * @alias getBackendSystem
      */
@@ -432,7 +461,9 @@ class RoseAPI {
     }
 
     /**
-     * @see getEntity
+     * same as {@link getEntity} called with entityName='robots'
+     * @param {string} uuid - the uuid of the object to be retrieved
+     * @param {callback} callback - callback function for processing the result
      * @global
      * @alias getRobot
      */
@@ -441,7 +472,9 @@ class RoseAPI {
     }
 
     /**
-     * @see getEntity
+     * same as {@link getEntity} called with entityName='robots'
+     * @param {string} uuid - the uuid of the object to be retrieved
+     * @param {callback} callback - callback function for processing the result
      * @global
      * @alias getConnection
      */
@@ -495,7 +528,9 @@ class RoseAPI {
     }
 
     /**
-     * @see findEntities
+     * same as {@link findEntities} called with entityName='backend_systems'
+     * @param {object} queryTerm - the query-term describing the objects to be retrieved.
+     * @param {callback} callback - the callback function for receiving the retrieved objects.
      * @global
      * @alias findBackendSystems
      */
@@ -504,7 +539,9 @@ class RoseAPI {
     }
 
     /**
-     * @see findEntities
+     * same as {@link findEntities} called with entityName='robots'
+     * @param {object} queryTerm - the query-term describing the objects to be retrieved.
+     * @param {callback} callback - the callback function for receiving the retrieved objects.
      * @global
      * @alias findRobots
      */
@@ -513,7 +550,9 @@ class RoseAPI {
     }
 
     /**
-     * @see findEntities
+     * same as {@link findEntities} called with entityName='connections'
+     * @param {object} queryTerm - the query-term describing the objects to be retrieved.
+     * @param {callback} callback - the callback function for receiving the retrieved objects.
      * @global
      * @alias findConnections
      */
@@ -524,6 +563,12 @@ class RoseAPI {
     // -----------------------------------------------------------------------------
 
     /**
+     * Runs {@link findEntities} and returns the first record returned
+     * by that method. However, if no matching record or more than one
+     * matching records are found, an error is passed to the callback.
+     * @param {entityName} entityName
+     * @param {object} queryTerm - the query-term describing the object to be retrieved.
+     * @param {callback} callback - the callback function for receiving the retrieved object.
      * @global
      * @alias findOneEntity
      */
@@ -551,7 +596,9 @@ class RoseAPI {
     }
 
     /**
-     * @see findOneEntity
+     * same as {@link findOneEntity} called with entityName='backend_systems'
+     * @param {object} queryTerm - the query-term describing the object to be retrieved.
+     * @param {callback} callback - the callback function for receiving the retrieved object.
      * @global
      * @alias findOneBackendSystem
      */
@@ -560,7 +607,9 @@ class RoseAPI {
     }
 
     /**
-     * @see findOneEntity
+     * same as {@link findOneEntity} called with entityName='robots'
+     * @param {object} queryTerm - the query-term describing the object to be retrieved.
+     * @param {callback} callback - the callback function for receiving the retrieved object.
      * @global
      * @alias findOneRobot
      */
@@ -569,7 +618,9 @@ class RoseAPI {
     }
 
     /**
-     * @see findOneEntity
+     * same as {@link findOneEntity} called with entityName='connections'
+     * @param {object} queryTerm - the query-term describing the object to be retrieved.
+     * @param {callback} callback - the callback function for receiving the retrieved object.
      * @global
      * @alias findOneConnection
      */
@@ -609,6 +660,18 @@ class RoseAPI {
     }
 
     /**
+     * returns the one instance of the connection class given as first
+     * argument that match the instanceQueryObject. If none is found,
+     * or more than one, than the methods emits an error.
+     * @param {object|string} classUuidOrQueryObject - if passed as
+     * object, it is interpreted as query-term that describes the
+     * connection class the instance of which is requested; if passed
+     * as string, it must represent the UUID of a connection class
+     * object.
+     * @param {object} instanceQueryObject - query-term object
+     * representing the instances to be retrieved
+     * @param {callback} callback - callback function for receiving
+     * the retrieved connection instance object.
      * @global
      * @alias findOneConnectionInstance
      */
@@ -654,6 +717,9 @@ class RoseAPI {
     // -----------------------------------------------------------------------------
 
     /**
+     * runs {@link findOneConnection} restricted to connection classes.
+     * @param {object} queryTerm
+     * @param {callback} callback
      * @global
      * @alias findOneConnectionClass
      */
@@ -670,7 +736,13 @@ class RoseAPI {
     
     // -----------------------------------------------------------------------------
 
+    
+
     /**
+     * Creates a new entity in the Rose server
+     * @param {entityName} entityName
+     * @param {object} valueHash - value hash object for the new object, e.g. `{NAME:'xyz'}`
+     * @param {callback} callback - callback function to receive the newly created object
      * @global
      * @alias createEntity
      */
@@ -684,7 +756,9 @@ class RoseAPI {
     }
 
     /**
-     * @see createEntity
+     * Runs {@link createEntity} with entityName passed as 'backend_systems'.
+     * @param {object} valueHash - value hash object for the new object, e.g. `{NAME:'xyz'}`
+     * @param {callback} callback - callback function to receive the newly created object
      * @global
      * @alias createBackendSystem
      */
@@ -694,7 +768,9 @@ class RoseAPI {
     }
 
     /**
-     * @see createEntity
+     * Runs {@link createEntity} with entityName passed as 'robots'.
+     * @param {object} valueHash - value hash object for the new object, e.g. `{NAME:'xyz'}`
+     * @param {callback} callback - callback function to receive the newly created object
      * @global
      * @alias createRobot
      */
@@ -704,7 +780,9 @@ class RoseAPI {
     }
 
     /**
-     * @see createEntity
+     * Runs {@link createEntity} with entityName passed as 'connections'.
+     * @param {object} valueHash - value hash object for the new object, e.g. `{NAME:'xyz'}`
+     * @param {callback} callback - callback function to receive the newly created object
      * @global
      * @alias createConnection
      */

@@ -375,7 +375,9 @@ function buildNav(members) {
 
         members.globals.forEach(({kind, longname, name}) => {
             if ( kind !== 'typedef' && !hasOwnProp.call(seen, longname) ) {
-                globalNav += `<li>${linkto(longname, name)}</li>`;
+		if (!name.startsWith('___IGNORE')) {
+                    globalNav += `<li>${linkto(longname, name)}</li>`;
+		}
             }
             seen[longname] = true;
         });
@@ -447,7 +449,7 @@ exports.publish = (taffyData, opts, tutorials) => {
     helper.setTutorials(tutorials);
 
     data = helper.prune(data);
-    data.sort('longname, version, since');
+    //data.sort('longname, version, since');
     helper.addEventListeners(data);
 
     data().each(doclet => {
