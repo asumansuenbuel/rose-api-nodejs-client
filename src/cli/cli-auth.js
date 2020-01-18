@@ -20,6 +20,7 @@ const _getTokenFilename = () => {
 
 const login = (options = {}) => {
     const filename = _getTokenFilename();
+    cliInfo(filename);
     if (!options.force && fs.existsSync(filename)) {
 	cliInfo('You are already logged in; use "rose login -f" to force re-login');
 	return;

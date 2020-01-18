@@ -90,6 +90,7 @@ async function getAuthenticatedClient() {
 	code_challenge_method: 'S256',
 	// Pass along the generated code challenge.
 	code_challenge: codes.codeChallenge,
+	prompt: 'select_account'
     });
 
     // Open an http server to accept the oauth callback. In this simple example,
