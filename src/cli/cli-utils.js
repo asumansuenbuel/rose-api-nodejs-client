@@ -8,6 +8,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const { spawn } = require('child_process');
+
 const openBrowser = require('open');
 
 const { inred, ingreen, inyellow, inmagenta, incyan } = require('../colorize');
@@ -124,6 +126,19 @@ const getUniqueNameListAndHash = records => {
     });
     return { uniqueNameList, hash };
 }
+
+const runSystemCommand = (cmd, options) => {
+    const cmdId = (options && options.cmdId) ? options.cmdId : "command";
+    const cmdFile = path.join(os.tmpdir(), `tmp-${cmdId}-${process.pid}.sh`);
+    //console.log(cmdFile);
+    const script = `#!/bin/sh
+${cmd}
+`;
+    fs.writeFileSync(cmdFile, script, 'utf-8');
+    fs.chmodSync(cmdFile, '0755');
+    spawn(cmdFile, [], { stdio: 'inherit' });
+}
+
 
 const findAllFiles = (fname, dir) => {
     const res = {};
@@ -258,5 +273,6 @@ module.exports = {
     stringFormat,
     formatText,
     openUrlInBrowser,
-    getTmpFile
+    getTmpFile,
+    runSystemCommand
 }

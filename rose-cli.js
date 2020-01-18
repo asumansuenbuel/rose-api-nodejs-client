@@ -9,15 +9,17 @@ const program = require('commander');
 
 const { login, logout } = require('./src/cli/cli-auth');
 const commands = require('./src/cli/commands')
-const { cliInfo, cliWarn, cliError, stringFormat, getTmpFile } = require('./src/cli/cli-utils');
+const { cliInfo, cliWarn, cliError, stringFormat, getTmpFile, runSystemCommand } = require('./src/cli/cli-utils');
 const { blue } = require('chalk');
 
 const { help } = require('./src/cli/help-texts')
 
-const _getRegisteredCommands = () => {
-    const registeredCommands = program.commands.filter(cmd => !cmd._noHelp).map(cmd => cmd.name());
+const _getRegisteredCommands = (onlyVisible) => {
+    const fn = onlyVisible ? (cmd => !cmd._noHelp) : (() => true);
+    const registeredCommands = program.commands.filter(fn).map(cmd => cmd.name());
     return registeredCommands;
 }
+
 
 /**
  * The shell command for invoking the Rose command line interface. All
@@ -422,7 +424,7 @@ program
     .command('bash-enable-completion')
     .action(() => {
 	const tmpFile = getTmpFile();
-	const cmd = `complete -W "${_getRegisteredCommands().join(' ')}" -o dirnames rose`;
+	const cmd = `complete -W "${_getRegisteredCommands(true).join(' ')}" -o dirnames rose`;
 	require('fs').writeFileSync(tmpFile, cmd, 'utf-8');
 	console.log(`source ${tmpFile}`);
     })
@@ -445,9 +447,11 @@ program
     .description('display the current Rose CLI/API version')
 
 program
-    .command('update-rose-command', { noHelp: true })
+    .command('update-rose', { noHelp: true })
     .action(() => {
-	cliInfo('npm install git+https://github.com/asumansuenbuel/rose-api-nodejs-client.git');
+	cliInfo('updating rose...');
+	let cmd = 'npm install git+https://github.com/asumansuenbuel/rose-api-nodejs-client.git';
+	runSystemCommand(cmd);
     })
 
 
@@ -468,5 +472,5 @@ if (process.argv.length === 2) {
 if ((typeof commandName === 'string') && !_isRegisteredCommand()) {
     cliInfo(stringFormat('*** ' + help.commands.unknownCommand,
 			 commandName,
-			 _getRegisteredCommands().map(s => blue(s)).join('\n  ')));
+			 _getRegisteredCommands(true).map(s => blue(s)).join('\n  ')));
 }
