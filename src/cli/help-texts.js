@@ -56,6 +56,7 @@ const help = {
 	    + " completion for the rose command. Using the following on your bash command"
 	    + " line enables the command completion for Rose: "
 	    + bold("$(rose bash-enable-completion)"),
+	cleanup: "cleans up the current folder and checks whether the Rose scenarios that are connected to local folder still exist on the server. If not, the local folder is disconnected from the non-existing object; the folder itself remains untouched.",
 	unknownCommand: "Unknown command \"{0}\"; commands are \n  "
 	    + "{1}\n or \"--help\" for usage information."
     },

@@ -220,12 +220,21 @@ class RoseFolder {
 	fs.writeFileSync(initFile, JSON.stringify(json), 'utf-8');
     }
 
+    _disconnectFolder(folder) {
+	const initFile = this.getInitFileInFolder(folder);
+	try {
+	    fs.unlinkSync(initFile);
+	} catch (err) {
+	}
+    }
+
     /**
      * updates the folder info stored for the given folder by
      * contacting the Rose server for any updated information. Returns
      * a Promise.
      */
-    _updateFolderInfo(folder) {
+    _updateFolderInfo(folder, options = {}) {
+	const { okIfDisconnected } = options;
 	const finfo = this.getFolderInfo(folder)
 	if (!finfo || !finfo.object) {
 	    console.log(`no rose information found for folder "${folder}"`);
@@ -238,29 +247,59 @@ class RoseFolder {
 	    this.rose.getConnection(obj.UUID, (err, cobj) => {
 		cliStopProgress(ptimer);
 		cliInfo('');
+		if (this._maybeDisconnectFolder(err, folder)) {
+		    if (okIfDisconnected) {
+			return resolve(folder);
+		    }
+		    return reject(`folder is no longer connected to Rose.`);
+		}
 		if (err) {
 		    return reject(err);
 		}
-		const fields = ['NAME', 'ISLOCAL', 'CLASS_UUID'];
-		let changeDetected = false;
-		for(let i = 0; i < fields.length && !changeDetected; i++) {
-		    let fld = fields[i];
-		    let oldVal = obj[fld];
-		    let newVal = cobj[fld];
-		    if (oldVal !== newVal) {
-			cliInfo(dim(`  value of field "${fld}" has changed.`));
-			changeDetected = true;
-		    }
-		}
-		if (changeDetected) {
-		    let object = cobj;
-		    let isClass = !cobj.CLASS_UUID;
-		    this._writeFolderInfo(folder, isClass, object);
-		    cliInfo(dim(`  folder info updated in local folder.`));
-		}
+		let changeDetected = this._maybeUpdateFolderInfo(folder, obj, cobj);
 		resolve(changeDetected);
 	    });
 	});
+    }
+
+    /**
+     * checks whether certain key fields have changed and updated the folder info
+     */
+    _maybeUpdateFolderInfo(folder, oldObject, newObject) {
+	const fields = ['NAME', 'ISLOCAL', 'CLASS_UUID'];
+	let changeDetected = false;
+	for(let i = 0; i < fields.length && !changeDetected; i++) {
+	    let fld = fields[i];
+	    let oldVal = oldObject[fld];
+	    let newVal = newObject[fld];
+	    if (oldVal !== newVal) {
+		cliInfo(dim(`  [${folder}]: value of field "${fld}" has changed.`));
+		changeDetected = true;
+	    }
+	}
+	if (changeDetected) {
+	    let object = newObject;
+	    let isClass = !newObject.CLASS_UUID;
+	    this._writeFolderInfo(folder, isClass, object);
+	    cliInfo(dim(`  folder "${folder}" updated locally.`));
+	}
+	return changeDetected;
+    }
+
+    _maybeDisconnectFolder(err, folder) {
+	if (err) {
+	    if (typeof err === 'string' && err.includes('no record found with id')) {
+		let finfo = this.getFolderInfo(folder);
+		let folderName = this. getFolderNameFromFolderKey(folder);
+		const classOrInstance = finfo.isClass ? 'class' : 'instance';
+		let oldName = finfo.object.NAME;
+		this._disconnectFolder(folder);
+		cliInfo(`folder "${folderName}" has been disconnected; scenario`
+			+ ` "${oldName}" could no longer be found on the server.`);
+		return true;
+	    }
+	}
+	return false;
     }
 
     getFolderInfo(folder) {
@@ -353,6 +392,60 @@ class RoseFolder {
 	});
 	return classKeyUuidMap;
     }
+
+    // --------------------------------------------------------------------------------
+
+    /**
+     * goes through all registered local folders and checks whether
+     * the connected Rose object still exists on the server. If not,
+     * the folder is disconnect, i.e. the roseInitFile is deleted. The
+     * folder content itself is not touched (beside removing the
+     * roseInitFile).
+     */
+    cleanup(options = {}) {
+	const info = this.$info;
+	const promises = Object.keys(info).map(folder => {
+	    return this.cleanupFolder(folder);
+	});
+	return Promise.all(promises).catch(cliError);
+    }
+
+    /**
+     * checks whether the Rose object that is connected with this
+     * folder still exists on the server. If not, the folder is
+     * disconnect, i.e. the roseInitFile is deleted. The folder
+     * content itself is not touched (beside removing the
+     * roseInitFile).
+     * @param {string} folder
+     * @returns {Promise}
+     */
+    cleanupFolder(folder) {
+	const finfo = this.getFolderInfo(folder);
+	if (!finfo || !finfo.object) {
+	    return Promise.resolve(null);
+	}
+	let folderName = this. getFolderNameFromFolderKey(folder);
+	return new Promise((resolve, reject) => {
+	    const uuid = finfo.object.UUID;
+	    const classOrInstance = !!finfo.object.CLASS_UUID ? 'instance' : 'class';
+	    cliInfo(dim(`- checking ${classOrInstance} folder "${folderName}"...`));
+	    this.rose.getConnection(uuid, (err, obj) => {
+		if (this._maybeDisconnectFolder(err, folder)) {
+		    return resolve(folder);
+		}
+		if (err) {
+		    return reject(err);
+		}
+		let changeDetected = this._maybeUpdateFolderInfo(folder, finfo.object, obj);
+		if (changeDetected) {
+		    return resolve(folder);
+		}
+		resolve(null);
+	    });
+	});
+    }
+    
+    // --------------------------------------------------------------------------------
 
     /**
      * creates a RoseStudio object interactively.

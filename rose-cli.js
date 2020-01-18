@@ -409,6 +409,22 @@ program
     .description(help.commands.open)
 
 /**
+ * cleans up the current folder and checks whether the Rose scenarios
+ * that are connected to local folder still exist on the server. If
+ * not, the local folder is disconnected from the non-existing object;
+ * the folder itself remains untouched.
+ *
+ * #### Usage
+ * `rose open [name-pattern]
+ * @global
+ * @name cleanup
+ */
+program
+    .command('cleanup')
+    .action(commands.cleanup)
+    .description(help.commands.cleanup)
+
+/**
  * this is a convenience command that can be used to enable bash
  * completion for the rose command. Using the following on your bash
  * command line enables the command completion for Rose: `$(rose

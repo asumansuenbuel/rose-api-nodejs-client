@@ -16,6 +16,12 @@ const { green, bold } = require('chalk');
 
 const Table = require('cli-table');
 
+const NoServerCommands = [
+    'version',
+    'bash-enable-completion',
+    'update-rose'
+]
+
 class Commands {
 
     constructor(roseOptions = {}) {
@@ -331,6 +337,11 @@ class Commands {
 	this.cli_edit(name, options);
     }
 
+    cli_cleanup(options = {}) {
+	const rfolder = new RoseFolder(this.rose);
+	rfolder.cleanup(options);
+    }
+
     cli_edit(name, options = {}) {
 	const pathInfo = this._checkForRoseInfoInFolder(name);
 
@@ -453,7 +464,7 @@ Object.getOwnPropertyNames(proto)
 	const cliName = fn.substring(4);
 	module.exports[cliName] = (...args) => {
 	    const f = commandsInstance[fn].bind(commandsInstance);
-	    if (!commandsInstance.rose) {
+	    if (!NoServerCommands.includes(cliName) && !commandsInstance.rose) {
 		cliWarn(`You are not logged in into Rose. Please run "rose login".`);
 		return;
 	    }
