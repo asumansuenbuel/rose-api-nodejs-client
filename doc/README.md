@@ -13,7 +13,11 @@ color: red;
 }
 </style>
 
+<hr/>
+
 ## Rose API for NodeJS
+
+_Asuman Suenbuel, SAP Palo Alto_
 
 This package provides the API client for RoseStudio, a
 meta-programming environment focussing on Robotics applications.  The

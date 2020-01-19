@@ -169,6 +169,7 @@ class ZipFile {
 		}
 		return;
 	    }
+	    //console.log(zfile);
 	    let p2 = () => new Promise((resolve, reject) => {
 		zfile.async('nodebuffer')
 		    .then(content => {
@@ -181,7 +182,9 @@ class ZipFile {
 			    resolve(dest);
 			    return;
 			}
-			fs.writeFile(dest, content, err => {
+			let { unixPermissions } = zfile;
+			let options = { mode: unixPermissions };
+			fs.writeFile(dest, content, options, err => {
 			    if (err) {
 				return reject(err);
 			    }

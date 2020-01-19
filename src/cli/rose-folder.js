@@ -240,7 +240,7 @@ class RoseFolder {
 	    console.log(`no rose information found for folder "${folder}"`);
 	    return Promise.resolve({})
 	}
-	cliInfo(`checking for updated folder info for "${folder}"...`, true);
+	cliInfo(dim(`  checking for updated folder info for "${folder}"...`), true);
 	const ptimer = cliStopProgress();
 	const obj = finfo.object;
 	return new Promise((resolve, reject) => {
@@ -950,6 +950,7 @@ class RoseFolder {
     
     _updateScenarioFolder(folder, options = {}, internalOptions = {}) {
 	const finfo = this.getFolderInfo(folder);
+	//console.log(blue(`instanceFolders in updateScenario: ${JSON.stringify(internalOptions.instanceFolders)}`))
 	const errmsgNoInfo = `no rose information found for "${folder}"; `
 	      + 'please specify a folder that is connected to a RoseStudio scenario class.';
 	if (!finfo) {
@@ -965,12 +966,13 @@ class RoseFolder {
 		+ 'please specify a folder that is connected to an RoseStudio scenario class.';
 	    return cliError(msg);
 	}
-	cliInfo(`uploading to scenario "${finfo.object.NAME}"...`, true);
+	cliInfo(`  uploading to scenario "${finfo.object.NAME}"...`, true);
 
 	const _updateInstances = uuid => {
-	    let instanceFolders = internalOptions.instanceFolders || this.getAllInstanceFolders(uuid);
+	    const { instanceFolders } = internalOptions;
+	    let ifolders = (instanceFolders && instanceFolders.slice())|| this.getAllInstanceFolders(uuid);
 	    if (!Array.isArray(instanceFolders)) instanceFolders = [instanceFolders]
-	    if (instanceFolders.length === 0) {
+	    if (ifolders.length === 0) {
 		cliInfo('found no local instance folders for this scenario class.');
 		return;
 	    }
@@ -978,13 +980,13 @@ class RoseFolder {
 		cliInfo(`found instance folders ${instanceFolders.join(", ")}`);
 	    }
 	    const updateNextInstanceFolder = () => {
-		if (instanceFolders.length === 0) {
+		if (ifolders.length === 0) {
 		    return;
 		}
-		let ifolder = instanceFolders.shift();
+		let ifolder = ifolders.shift();
 		options.classUpdate = false;
 		options.internalCall = true;
-		this.updateInstanceFolder(ifolder, options)
+		this.updateInstanceFolder(ifolder, options, internalOptions)
 		    .then(() => {
 			updateNextInstanceFolder();
 		    })
@@ -994,7 +996,7 @@ class RoseFolder {
 	};
 
 	if (options.instancesOnly) {
-	    cliInfo(`option "--instances-only" has been specified, skipping scenario class upload.`);
+	    cliInfo(`  option "--instances-only" has been specified, skipping scenario class upload.`);
 	    return _updateInstances(uuid);
 	}
 	
@@ -1017,8 +1019,12 @@ class RoseFolder {
 
     updateInstanceFolder(folder, options = {}, internalOptions = {}) {
 	let updateFolderPromise;
-	if (internalOptions.internalCall) {
+	let { instanceFolders } = internalOptions;
+	//console.log(blue(`instanceFolders in updateInstance: ${JSON.stringify(instanceFolders)}`))
+	if (internalOptions.internalCall
+	    || (Array.isArray(instanceFolders) && instanceFolders.includes(folder))) {
 	    updateFolderPromise = Promise.resolve(false);
+	    //console.log(blue(`skipping checking for updates for ${folder}...`));
 	} else {
 	    updateFolderPromise = this._updateFolderInfo(folder);
 	}
@@ -1050,9 +1056,9 @@ class RoseFolder {
 	    return cliError(msg);
 	}
 	if (isLocal && !options.classUpdate && !internalCall) {
-	    let msg = `scenario instance "${instanceName}" is marked as "local"; `
-		+ `--no-class-update can't be used here.`;
-	    return cliError(msg);
+	    //let msg = `scenario instance "${instanceName}" is marked as "local"; `
+		//+ `--no-class-update can't be used here.`;
+	    //return cliError(msg);
 	}
 	const classFolderKey = this.getClassFolderKey(folder);
 	const classFolder = this.getFolderNameFromFolderKey(classFolderKey)
@@ -1062,7 +1068,7 @@ class RoseFolder {
 			+ ` code from the RoseStudio server.`);
 	    } else {
 		const internalOptions = { uuid: classUuid, instanceFolders: [folder] }
-		cliInfo(`updating scenario class folder "${classFolder}"...`);
+		cliInfo(`  updating scenario class folder "${classFolder}"...`);
 		return this.updateScenarioFolder(classFolder, { wipe, skipConfirm }, internalOptions);
 	    }
 	}
@@ -1099,7 +1105,7 @@ class RoseFolder {
 		    return Promise.resolve(false);
 		} else {
 		    return new Promise((resolve, reject) => {
-			cliInfo(`downloading/copying the code for "${folder}"...`, true);
+			cliInfo(`  downloading/copying the code for "${folder}"...`, true);
 			const ptimer = cliStartProgress();
 			const deleteFilter = filename => {
 			    if (filename === roseInitFilename) {
