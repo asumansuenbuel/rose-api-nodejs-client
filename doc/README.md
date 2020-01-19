@@ -1,4 +1,18 @@
------------------------
+<style>
+.source code {
+background: #eee;
+}
+box {
+border: solid black 1pt;
+display: block;
+padding: 5pt;
+}
+
+red {
+color: red;
+}
+</style>
+
 ## Rose API for NodeJS
 
 This package provides the API client for RoseStudio, a
@@ -16,5 +30,11 @@ The Rose API enables the use of Rose features outside the RoseStudio website int
 - use the command line interface to apply Rose's code-generation functionality on local files.
 
 Documentation for the Rose Command Line Interface can be found [here](../cli/index.html).
+
+### API method overview
+
+The following figure illustrates the different groups of methods that the Rose API provides:
+
+![API method overview](/images/doc/api-methods-overview.png)
 
 

@@ -357,7 +357,12 @@ function linktoExternal(longName, name) {
  */
 function buildNav(members) {
     let globalNav;
-    let nav = '<h2><a href="index.html">Home</a></h2>';
+    //let nav = '<h2><a href="index.html">Home</a></h2>';
+    let nav = '<h2>Overview</h2>';
+    nav += '<ul style="list-style-type:circle;padding-left:2em">';
+    nav += '<li><b><a href="../cli/index.html">Rose Command Line Interface</b></li>';
+    nav += '<li><a href="../api/index.html">Rose API</li>';
+    nav += '</ul>';
     const seen = {};
     const seenTutorials = {};
 
@@ -385,7 +390,7 @@ function buildNav(members) {
             nav += `<h3>${linkto('global', 'Commands')}</h3>`;
         }
         else {
-            nav += `<h3>Commands</h3><ul>${globalNav}</ul>`;
+            nav += `<h3>${linkto('global', 'Commands')}</h3><ul>${globalNav}</ul>`;
         }
     }
 

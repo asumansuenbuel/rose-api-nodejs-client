@@ -1,9 +1,15 @@
 /**
- * RoseAPI module main file
+ * ## Rose API module
  *
+ * The rose-api module exports nodejs functions to access the
+ * different functionality offered by the RoseStudio environment.
+ * 
+ * ### Callback functions used in the API
+ * 
  * All callback functions used in this API are expected to follow the
  * commonly used nodejs callback function signature
  *
+ * ```
  * (err, result) => {
  *     if (err) {
  *       // do error handling
@@ -11,12 +17,20 @@
  *     }
  *     // happy path: process the result parameter
  * }
- *
+ * ```
+ * 
  * with the first parameter being the error parameter, which is
  * passed as a non-null value in case an * error is reported.
- * 
+ *
+ * Note that, in some case, the description of the API method includes
+ * the phrase "returns _xyz_", which actually means that the callback
+ * function is invoked with _xyz_ as `result` parameter on successful
+ * completion of the operation./**
+ * RoseAPI module main file
+ *
  * @author Asuman Suenbuel
  */
+
 
 const { OAuth2Client } = require('google-auth-library');
 const request = require('request');
@@ -39,6 +53,41 @@ const RoseJsonDecorator = '%JSN';
  * @ignore
  */
 class RoseAPI {
+
+    /**
+     * ## Rose API Methods
+     *
+     * The rose-api module exports nodejs functions to access the
+     * different functionality offered by the RoseStudio environment.
+     * 
+     * ### Callback functions used in the API
+     * 
+     * All callback functions used in this API are expected to follow the
+     * commonly used nodejs callback function signature
+     *
+     * ```
+     * (err, result) => {
+     *     if (err) {
+     *       // do error handling
+     *      return;
+     *     }
+     *     // happy path: process the result parameter
+     * }
+     * ```
+     * 
+     * with the first parameter being the error parameter, which is
+     * passed as a non-null value in case an * error is reported.
+     *
+     * Note that, in some case, the description of the API method includes
+     * the phrase "returns _xyz_", which actually means that the callback
+     * function is invoked with _xyz_ as `result` parameter on successful
+     * completion of the operation./**
+     * RoseAPI module main file
+     * @global
+     * @author Asuman Suenbuel
+     */
+    ___IGNORE() {}
+
 
     /**
      */
@@ -1462,7 +1511,6 @@ const shallowCopy = obj => {
 
 /**
  * @name rose-api
- * @module
  * @description
  *
  * ## Rose API module
@@ -1492,7 +1540,7 @@ const shallowCopy = obj => {
  * the phrase "returns _xyz_", which actually means that the callback
  * function is invoked with _xyz_ as `result` parameter on successful
  * completion of the operation.
- * 
+ * @ignore
  * @author Asuman Suenbuel
  */
 
