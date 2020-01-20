@@ -145,7 +145,16 @@ class Commands {
 		chars: _plainChars
 	    });
 	    records.sort(_sortByName).forEach(obj => {
-		let row = columns.map(key => String(obj[key]));
+		let row = columns.map(key => {
+		    let value = obj[key];
+		    let str;
+		    if (typeof value === 'object') {
+			str = JSON.stringify(value, null, 2);
+		    } else {
+			str = String(value);
+		    }
+		    return str;
+		});
 		table.push(row);
 	    });
 	    cliInfo(table.toString());

@@ -99,6 +99,9 @@ class ZipFile {
 		//console.log(`checking ${filepath}...`);
 		if (!whitelistFileFilterFunction(filepath)) {
 		    //console.log(`no pp file: ${filepath}`)
+		    if (debug) {
+			console.log(`skipping ${filepath}...`);
+		    }
 		    return;
 		}
 		//console.log(`whitelisted: ${filepath}`)
@@ -142,7 +145,8 @@ class ZipFile {
 	const createFilePromises = [];
 	const { zip } = this;
 	const { dryRun, clearFolder, debug, deleteFilter } = options || {};
-	debug && console.log(inyellow(`extractToFolder: dryRun=${!!dryRun}, clearFolder=${!!clearFolder}`));
+	debug && console.log(inyellow(`extractToFolder: dryRun=${!!dryRun}, `
+				      + `clearFolder=${!!clearFolder}`));
 	Object.keys(zip.files).forEach(filename => {
 	    let zfile = zip.file(filename);
 	    if (!zfile) {

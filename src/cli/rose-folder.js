@@ -214,9 +214,12 @@ class RoseFolder {
 	//return Promise.resolve(folder);
     }
 
-    _writeFolderInfo(folder, isClass, object) {
+    _writeFolderInfo(folder, isClass, object, lastUploadTimestamp) {
 	const initFile = this.getInitFileInFolder(folder);
 	const json = { isClass, object };
+	if (typeof lastUploadTimestamp === 'number') {
+	    json.lastUploadTimestamp = lastUploadTimestamp;
+	}
 	fs.writeFileSync(initFile, JSON.stringify(json), 'utf-8');
     }
 
@@ -668,6 +671,7 @@ class RoseFolder {
 					cliStopProgress(ptimer);
 					if (err) return reject(err);
 					cliInfo('done');
+					this._updateLastUploadTimestamp(localFolder);
 					resolve();
 				    });
 				});
@@ -971,8 +975,8 @@ class RoseFolder {
 	}
 	cliInfo(`  uploading to scenario "${finfo.object.NAME}"...`, true);
 
-	const _updateInstances = uuid => {
-	    const { instanceFolders } = internalOptions;
+	const _updateInstances = (uuid, localFilesOnly) => {
+	    let { instanceFolders } = internalOptions;
 	    let ifolders = (instanceFolders && instanceFolders.slice())|| this.getAllInstanceFolders(uuid);
 	    if (!Array.isArray(instanceFolders)) instanceFolders = [instanceFolders]
 	    if (ifolders.length === 0) {
@@ -980,7 +984,7 @@ class RoseFolder {
 		return;
 	    }
 	    if (!internalOptions.instanceFolders) {
-		cliInfo(`found instance folders ${instanceFolders.join(", ")}`);
+		cliInfo(`  found instance folders ${ifolders.join(", ")}`);
 	    }
 	    const updateNextInstanceFolder = () => {
 		if (ifolders.length === 0) {
@@ -989,13 +993,14 @@ class RoseFolder {
 		let ifolder = ifolders.shift();
 		options.classUpdate = false;
 		options.internalCall = true;
-		this.updateInstanceFolder(ifolder, options, internalOptions)
+		internalOptions.localFilesOnly = localFilesOnly;
+		return this.updateInstanceFolder(ifolder, options, internalOptions)
 		    .then(() => {
 			updateNextInstanceFolder();
 		    })
 		    .catch(cliError)
 	    }
-	    updateNextInstanceFolder();
+	    return updateNextInstanceFolder();
 	};
 
 	if (options.instancesOnly) {
@@ -1004,20 +1009,45 @@ class RoseFolder {
 	}
 	
 	const ptimer = cliStartProgress();
-	this.rose.uploadCodeTemplate(uuid, folder, (err, filesAdded) => {
-	    cliStopProgress(ptimer);
-	    if (err) {
-		return cliError(err);
-	    }
-	    cliInfo(`uploaded ${filesAdded.length} files to RoseStudio.`);
-	    cliInfo('  ' + filesAdded.map(f => dim(`- ${f}`)).join('\n  '));
-	    if (!internalOptions.instanceFolders && !options.full) {
-		cliInfo(`instance folders not updated; specify "--full" options to`
-			+ ` automatically update all instance folder.`);
-		return
-	    }
-	    _updateInstances(uuid);
+	return new Promise((resolve, reject) => {
+	    let { lastUploadTimestamp } = finfo;
+	    let uploadOptions = { lastUploadTimestamp };
+	    this.rose.uploadCodeTemplate(uuid, folder, uploadOptions, (err, filesAdded) => {
+		cliStopProgress(ptimer);
+		if (err) {
+		    return reject(err);
+		}
+		if (filesAdded.length > 0) {
+		    cliInfo(`uploaded ${filesAdded.length} files to RoseStudio.`);
+		    cliInfo('  ' + filesAdded.map(f => dim(`- ${f}`)).join('\n  '));
+		    this._updateLastUploadTimestamp(folder);
+		} else {
+		    cliInfo(`no files needed to be uploaded to RoseStudio.`);
+		}
+		if (!internalOptions.instanceFolders && !options.full) {
+		    cliInfo(`instance folders not updated; specify "--full" options to`
+			    + ` automatically update all instance folder.`);
+		    return
+		}
+		let localFilesOnly = (filesAdded.length === 0);
+		return _updateInstances(uuid, localFilesOnly)
+		    .then(() => {
+			resolve();
+		    })
+		    .catch(cliError)
+	    });
 	});
+    }
+
+    _updateLastUploadTimestamp(folder) {
+	//console.log(blue(`  - updating lastUploadTimestamp for ${folder}...`));
+	const finfo = this.getFolderInfo(folder);
+	if (!finfo) {
+	    return;
+	}
+	let { isClass, object } = finfo;
+	let lastUploadTimestamp = Number(new Date());
+	this._writeFolderInfo(folder, isClass, object, lastUploadTimestamp);
     }
 
     updateInstanceFolder(folder, options = {}, internalOptions = {}) {
@@ -1108,7 +1138,9 @@ class RoseFolder {
 		    return Promise.resolve(false);
 		} else {
 		    return new Promise((resolve, reject) => {
-			cliInfo(`  downloading/copying the code for "${folder}"...`, true);
+			// disabled for now, as placeholder instantiation cannot be checked locally
+			let localFilesOnly = false; //internalOptions.localFilesOnly && !wipe;
+			cliInfo(`  ${localFilesOnly?'':'downloading and '}copying the code for "${folder}"...`, true);
 			const ptimer = cliStartProgress();
 			const deleteFilter = filename => {
 			    if (filename === roseInitFilename) {
@@ -1116,7 +1148,7 @@ class RoseFolder {
 			    }
 			    return true
 			};
-			let options = { clearFolder: wipe, sourceFolderInfo, deleteFilter };
+			let options = { clearFolder: wipe, sourceFolderInfo, deleteFilter, localFilesOnly };
 			this.rose.downloadCode(uuid, folder, options, (err, result) => {
 			    cliStopProgress(ptimer);
 			    if (err) {

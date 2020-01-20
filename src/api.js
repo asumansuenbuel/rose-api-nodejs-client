@@ -39,6 +39,8 @@ const { Server, Auth, Settings } = require('./config');
 const ZipFile = require('./create-zip');
 
 const { fileContainsPreprocessorSyntax, mergeOnto } = require('./server_utils');
+const fs = require('fs');
+const path = require('path');
 
 const RoseJsonDecorator = '%JSN';
 
@@ -1288,7 +1290,7 @@ class RoseAPI {
 	const cb = (typeof optionsOrCallback === 'function')
 	      ? optionsOrCallback : ensureFunction(callback);
 	const options = (typeof optionsOrCallback === 'object') ? optionsOrCallback : {};
-	const { dryRun, debug, deleteFilter, clearFolder, sourceFolderInfo } = options;
+	const { dryRun, debug, deleteFilter, clearFolder, sourceFolderInfo, localFilesOnly } = options;
 
 	const getSourceCodeFolder = (cb1) => {
 	    this.api_getConnection(uuid, (err, cobj) => {
@@ -1361,7 +1363,9 @@ class RoseAPI {
 		const srcZip = new ZipFile();
 		try {
 		    //console.log('copying local files...');
-		    let addFolderOptions = {};
+		    let whitelistFileFilterFunction = this._getWhitelistFunction(sourceFolder, true);
+		    let debug = false;
+		    let addFolderOptions = { whitelistFileFilterFunction, debug };
 		    srcZip.addFolderRecursively(sourceFolder, sourceFolder, addFolderOptions);
 		    let options = { dryRun, debug, clearFolder, deleteFilter };
 		    srcZip.extractToFolder(targetFolder, options, err => {
@@ -1369,7 +1373,11 @@ class RoseAPI {
 			if (err) {
 			    return cb(err);
 			}
-			getCodeFromServer(false);
+			if (localFilesOnly) {
+			    cb(null, `skipping download.`);
+			} else {
+			    getCodeFromServer(false);
+			}
 		    });
 		} catch (err) {
 		    console.error(err);
@@ -1404,6 +1412,42 @@ class RoseAPI {
     }
 
     /**
+     * @returns the whitelist function used in zip creation and extraction
+     */
+    _getWhitelistFunction(sourceFolder, negate = false, lastUploadTimestamp) {
+	let TRUE = negate ? false : true;
+	let FALSE = !TRUE;
+	const _needsUpload = 
+	      (!negate && (typeof lastUploadTimestamp === 'number'))
+	      ? (fpath => {
+		  try {
+		      let mtime = fs.statSync(fpath).mtimeMs;
+		      if (mtime > lastUploadTimestamp) {
+			  //console.log(`  ---> ${fpath} has been modified since last upload.`);
+			  return TRUE;
+		      } else {
+			  //console.log(`  ---> ${fpath} has not been modified since last upload.`);
+			  return FALSE;
+		      }
+		  } catch (err) {
+		      console.error(err);
+		  }
+	      }) : (() => TRUE);
+	
+	return fpath => {
+	    if (fileContainsPreprocessorSyntax(fpath)) {
+		return _needsUpload(fpath);
+		//return TRUE;
+	    }
+	    if (path.join(sourceFolder, 'README.md') === fpath) {
+		return _needsUpload(fpath);
+		//return TRUE;
+	    }
+	    return FALSE;
+	};
+    }
+
+    /**
      * Uploads the contens of the sourceFolder into the code folder of
      * the connection class object with the given uuid.
      * @param {string} uuid - the uuid of the connection class object
@@ -1425,7 +1469,10 @@ class RoseAPI {
 	const cb = (typeof optionsOrCallback === 'function')
 	      ? optionsOrCallback : ensureFunction(callback);
 	const options = (typeof optionsOrCallback === 'object') ? optionsOrCallback : {};
-	const { dryRun, debug } = options;
+	const { dryRun, debug, lastUploadTimestamp } = options;
+	//if (typeof lastUploadTimestamp === 'number') {
+	//    console.log(`found lastUploadTimestamp in uploadCodeTemplate options: ${lastUploadTimestamp}`);
+	//}
 	debug && console.log(`uploading code from folder "${sourceFolder}"...`);
 
 	const _checkIsLocal = cb1 => {
@@ -1445,6 +1492,7 @@ class RoseAPI {
 	const _doUpload = isLocal => {
 	    const zip = new ZipFile();
 	    if (isLocal) {
+		/*
 		options.whitelistFileFilterFunction = fpath => {
 		    if (fileContainsPreprocessorSyntax(fpath)) {
 			return true;
@@ -1455,6 +1503,9 @@ class RoseAPI {
 		    }
 		    return false;
 		};
+		*/
+		options.whitelistFileFilterFunction =
+		    this._getWhitelistFunction(sourceFolder, false, lastUploadTimestamp);
 		options.debug = false;
 	    }
 	    let filesAdded = [];
@@ -1463,6 +1514,9 @@ class RoseAPI {
 		zip.addFolderRecursively(sourceFolder, sourceFolder, options);
 	    } catch (err) {
 		return cb(err);
+	    }
+	    if (filesAdded.length === 0) {
+		return cb(null, []);
 	    }
 	    const url = `binary/zip/${uuid}`;
 	    const getReadStream = () => {
