@@ -46,7 +46,7 @@ const help = {
 	    + " associated RoseStudio scenario class. The folder must have been associated with the"
 	    + " scenario class using \"rose init-scenario\" command. Note, that all code content"
 	    + " for that class on the RoseStudio is overwritten by the contents of the local"
-	    + " folder through this command. If the \"-full\" option is specified, all instances"
+	    + " folder through this command. If the \"-all\" option is specified, all instances"
 	    + " of the scenario class that are associated with a local folder are updated as well.",
 	update: "same as \"update-scenario\", if the folder is connected to a scenario *class*;"
 	    + " same as \"update-instance\", if the folder is connected to a scenario *instance*",
@@ -56,7 +56,9 @@ const help = {
 	    + " completion for the rose command. Using the following on your bash command"
 	    + " line enables the command completion for Rose: "
 	    + bold("$(rose bash-enable-completion)"),
-	cleanup: "cleans up the current folder and checks whether the Rose scenarios that are connected to local folder still exist on the server. If not, the local folder is disconnected from the non-existing object; the folder itself remains untouched.",
+	cleanup: "cleans up the current folder and checks whether the Rose scenarios that are"
+	    + " connected to local folder still exist on the server. If not, the local folder"
+	    + " is disconnected from the non-existing object; the folder itself remains untouched.",
 	unknownCommand: "Unknown command \"{0}\"; commands are \n  "
 	    + "{1}\n or \"--help\" for usage information."
     },
@@ -82,14 +84,17 @@ const help = {
 	    create: "creates a new instance in RoseStudio; the name is inquired interactively",
 	},
 	updateScenario: {
-	    full: "If specified, all instances of the scenario class that are associated with a"
+	    all: "If specified, all instances of the scenario class that are associated with a"
 		+ " local folder are updated after the scenario class has been updated with the"
 		+ " content of the local folder.",
-	    wipe: "Only used when `--full` is given; option is then used while updating the"
+	    wipe: "Only used when `--all` is given; option is then used while updating the"
 		+ " connected instances of the scenario class.",
-	    skipConfirm: "Only used when `--full` is given; option is then used while updating the"
+	    skipConfirm: "Only used when `--all` is given; option is then used while updating the"
 		+ " connected instances of the scenario class.",
-	    instancesOnly: "Only updates the instances of the scenario class; the scenario class itself is not updated on the Rose server."
+	    instancesOnly: "Only updates the instances of the scenario class; the scenario class itself is not updated on the Rose server.",
+	    force: "By default, only files that have changed since last upload are being uploaded;"
+		+ " using this option forces that all relevant files from the scenario class folder"
+		+ " are uploaded to the Rose server."
 	},
 	updateInstance: {
 	    noClassUpdate: "By default, the code from the corresponding scenario class is"
@@ -99,7 +104,8 @@ const help = {
 		+ " will be copied on top of any existing content in the instance folder.",
 	    skipConfirm: "By default, the user is asked interactively"
 		+" to confirm the wiping out or overwriting of the instance folder contents."
-		+ " Setting this option skips this confirmation."
+		+ " Setting this option skips this confirmation.",
+	    force: "This option is passed onto the update-scenario part; see its description there."
 	},
 	update: {
 	    check: "runs a check whether the local folder info must be updated on the folder(s) involved in the operation"

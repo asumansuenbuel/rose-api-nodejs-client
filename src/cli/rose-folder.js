@@ -984,7 +984,7 @@ class RoseFolder {
 		return;
 	    }
 	    if (!internalOptions.instanceFolders) {
-		cliInfo(`  found instance folders ${ifolders.join(", ")}`);
+		cliInfo(dim(`  - instance folders \"${ifolders.join("\", \"")}\"`));
 	    }
 	    const updateNextInstanceFolder = () => {
 		if (ifolders.length === 0) {
@@ -1011,23 +1011,25 @@ class RoseFolder {
 	const ptimer = cliStartProgress();
 	return new Promise((resolve, reject) => {
 	    let { lastUploadTimestamp } = finfo;
-	    let uploadOptions = { lastUploadTimestamp };
+	    if (options.force) console.log(blue(`  - OPTION FORCE DETECTED`));
+	    let uploadOptions = options.force ? {} : { lastUploadTimestamp };
 	    this.rose.uploadCodeTemplate(uuid, folder, uploadOptions, (err, filesAdded) => {
 		cliStopProgress(ptimer);
 		if (err) {
 		    return reject(err);
 		}
 		if (filesAdded.length > 0) {
-		    cliInfo(`uploaded ${filesAdded.length} files to RoseStudio.`);
+		    let flen = filesAdded.length;
+		    cliInfo(`uploaded ${flen} file${flen===1?'':'s'}.`);
 		    cliInfo('  ' + filesAdded.map(f => dim(`- ${f}`)).join('\n  '));
 		    this._updateLastUploadTimestamp(folder);
 		} else {
 		    cliInfo(`no files needed to be uploaded to RoseStudio.`);
 		}
-		if (!internalOptions.instanceFolders && !options.full) {
-		    cliInfo(`instance folders not updated; specify "--full" options to`
-			    + ` automatically update all instance folder.`);
-		    return
+		if (!internalOptions.instanceFolders && !options.all) {
+		    cliInfo(`instance folders not updated; specify "--all" options to`
+			    + ` automatically update all instance folders.`);
+		    return;
 		}
 		let localFilesOnly = (filesAdded.length === 0);
 		return _updateInstances(uuid, localFilesOnly)
@@ -1069,7 +1071,7 @@ class RoseFolder {
     }
     
     _updateInstanceFolder(folder, options = {}, internalOptions = {}) {
-	const { classUpdate, internalCall, wipe, skipConfirm } = options;
+	const { classUpdate, internalCall, wipe, skipConfirm, force } = options;
 	const finfo = this.getFolderInfo(folder);
 	const errmsgNoInfo = `no rose information found for "${folder}"; `
 	      + 'please specify a folder that is connected to a RoseStudio scenario instance.';
@@ -1102,7 +1104,8 @@ class RoseFolder {
 	    } else {
 		const internalOptions = { uuid: classUuid, instanceFolders: [folder] }
 		cliInfo(`  updating scenario class folder "${classFolder}"...`);
-		return this.updateScenarioFolder(classFolder, { wipe, skipConfirm }, internalOptions);
+		let soptions = { force, wipe, skipConfirm };
+		return this.updateScenarioFolder(classFolder, soptions, internalOptions);
 	    }
 	}
 	let sourceFolderInfo = null;

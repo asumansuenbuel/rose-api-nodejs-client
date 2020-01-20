@@ -325,6 +325,7 @@ program
  * | `-s, --skip-confirm` | Only used when `--full` is given; option is then used while updating the connected instances of the scenario class. | false |
  * | `-i, --instances-only` | Only updates the instances of the scenario class; the scenario class itself is not updated on the Rose server. | false |
  * | `-c, --check` | runs a check whether the local folder info must be updated on the folder(s) involved in the operation. | false |
+ * | `-f, --force` | By default, only files that have changed since last upload are being uploaded; using this option forces that all relevant files from the scenario class folder are uploaded to the Rose server.|false|
  *
  *
  * @global
@@ -332,7 +333,8 @@ program
  */
 program
     .command('update-scenario <scenario-class-folder>')
-    .option('-f, --full', help.commandOptions.updateScenario.full)
+    .option('-a, --all', help.commandOptions.updateScenario.all)
+    .option('-f, --force', help.commandOptions.updateScenario.force)
     .option('-w, --wipe', help.commandOptions.updateScenario.wipe, false)
     .option('-s, --skip-confirm', help.commandOptions.updateScenario.skipConfirm, false)
     .option('-i, --instances-only', help.commandOptions.updateScenario.instancesOnly, false)
@@ -357,6 +359,7 @@ program
  * | `-w, --wipe`| if set, wipes out the contents of the instance folder prior to populating it with updated content from the scenario class. Otherwise, the new content will be copied on top of any existing content in the instance folder.|false|
  * | `-s, --skip-confirm` | If wipe option is set, then by default, the user is asked interactively to confirm the wiping out of the instance folder contents. Setting this option skips this confirmation.| false |
  * | `-c, --check` | runs a check whether the local folder info must be updated on the folder(s) involved in the operation. | false |
+ * | `-f, --force` | This option is passed onto the update-scenario part; see its description there.|false|
  *
  * @global
  * @name update-instance
@@ -367,6 +370,7 @@ program
     .option('-w, --wipe', help.commandOptions.updateInstance.wipe, false)
     .option('-s, --skip-confirm', help.commandOptions.updateInstance.skipConfirm, false)
     .option('-c, --check', help.commandOptions.update.check, false)
+    .option('-f, --force', help.commandOptions.updateInstance.force, false)
     .action(commands.updateInstance)
     .description(help.commands.updateInstance)
 
@@ -379,22 +383,24 @@ program
  * #### Options
  * |Name<div style="width: 200px">|Description|
  * |-|-|
- * | `-f, --full` | see `--full` option for `update-scenario` command.|
+ * | `-a, --all` | see `--all` option for `update-scenario` command.|
  * | `-n, --no-class-update` | see `--no-class-update` option for `update-instance` command.|
  * | `-w, --wipe` | see `--wipe` option for `update-instance` and `update-scenario` command.|
  * | `-s, --skip-confirm` | see `--skip-confirm` option for `update-instance` and `update-scenario` command.|
  * | `-c, --check` | runs a check whether the local folder info must be updated on the folder(s) involved in the operation. |
+ * | `-f, --force` | see `--force` option for `update-scenario` command.|
  *
  * @global
  * @name update
  */
 program
     .command('update <scenario-class-or-instance-folder>')
-    .option('-f, --full', help.commandOptions.updateScenario.full)
+    .option('-a, --all', help.commandOptions.updateScenario.all)
     .option('-n, --no-class-update', help.commandOptions.updateInstance.noClassUpdate, true)
     .option('-w, --wipe', help.commandOptions.updateInstance.wipe, false)
     .option('-s, --skip-confirm', help.commandOptions.skipConfirm, false)
     .option('-c, --check', help.commandOptions.update.check, false)
+    .option('-f, --force', help.commandOptions.updateScenario.force, false)
     .action(commands.updateScenarioOrInstance)
     .description(help.commands.update)
 
