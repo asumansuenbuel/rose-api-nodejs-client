@@ -100,6 +100,9 @@ const help = {
 	    skipConfirm: "By default, the user is asked interactively"
 		+" to confirm the wiping out or overwriting of the instance folder contents."
 		+ " Setting this option skips this confirmation."
+	},
+	update: {
+	    check: "runs a check whether the local folder info must be updated on the folder(s) involved in the operation"
 	}
     }
 }

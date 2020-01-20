@@ -1126,7 +1126,8 @@ class RoseAPI {
 	    if (err) {
 		return callback(err);
 	    }
-	    const json = this.api_getConfigJsonFromObject(obj);
+	    const json = this._getConnectionJSONFromObject(obj);
+	    //const json = this.api_getConfigJsonFromObject(obj);
 	    json.configJsonObj = configJson;
 	    this._updateConnection__JSON(uuid, json, callback);
 	})

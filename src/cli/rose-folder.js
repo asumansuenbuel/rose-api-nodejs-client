@@ -234,7 +234,10 @@ class RoseFolder {
      * a Promise.
      */
     _updateFolderInfo(folder, options = {}) {
-	const { okIfDisconnected } = options;
+	const { okIfDisconnected, check } = options;
+	if (!check) {
+	    return Promise.resolve({});
+	}
 	const finfo = this.getFolderInfo(folder)
 	if (!finfo || !finfo.object) {
 	    console.log(`no rose information found for folder "${folder}"`);
@@ -939,7 +942,7 @@ class RoseFolder {
 	if (internalOptions.internalCall) {
 	    updateFolderPromise = Promise.resolve(false);
 	} else {
-	    updateFolderPromise = this._updateFolderInfo(folder);
+	    updateFolderPromise = this._updateFolderInfo(folder, options);
 	}
 	return updateFolderPromise
 	    .then(hasChanged => {
@@ -1026,7 +1029,7 @@ class RoseFolder {
 	    updateFolderPromise = Promise.resolve(false);
 	    //console.log(blue(`skipping checking for updates for ${folder}...`));
 	} else {
-	    updateFolderPromise = this._updateFolderInfo(folder);
+	    updateFolderPromise = this._updateFolderInfo(folder, options);
 	}
 	return updateFolderPromise
 	    .then(hasChanged => {
