@@ -133,7 +133,7 @@ class RoseFolder {
 			    //throw `directory "${folder}" exists and is not empty.`;
 			    let type = 'confirm',
 				name = 'ok',
-				message = stringFormat(messages.confirmOverwriteScenarioFolder, folder);
+				message = stringFormat(messages.confirmOverwriteScenarioFolder, true, '  ', folder);
 			    let question = { type, name, message };
 			    return inquirer
 				.prompt(question)
@@ -184,9 +184,22 @@ class RoseFolder {
 	}
 	const _process = () => {
 	    const finfo = this.getFolderInfo(folder);
-	    if (finfo) {
-		let msg = `Folder "${folder}" is already connected to a RoseStudio scenario.`;
-		return Promise.reject(msg);
+	    if (finfo && finfo.object) {
+		//let msg = `Folder "${folder}" is already connected to a RoseStudio scenario.`;
+		//return Promise.reject(msg);
+		let type = 'confirm',
+		    name = 'ok',
+		    message = stringFormat(messages.confirmOverwriteScenarioFolderArgument, true, '  ', folder, finfo.object.NAME);
+		let question = { type, name, message };
+		return inquirer
+		    .prompt(question)
+		    .then(({ ok }) => {
+			if (ok) {
+			    let folderObject = finfo.object;
+			    return { folder, folderObject };
+			}
+			throw "operation aborted";
+		    })
 	    }
 	    if (!isValidFilename(folder, true)) {
 		let msg = `"${folder}" contains invalid characters for a folder.`;
@@ -223,7 +236,7 @@ class RoseFolder {
 			    let msg = `Something went wrong trying to create the folder: ${err}`;
 			    return Promise.reject(msg);
 			}
-			return folder;
+			return { folder };
 		    });
 	    }
 	}
@@ -546,6 +559,7 @@ class RoseFolder {
 		.then(answer => answer.result[0]);
 	};
 	let folderParameter = null;
+	let existingFolderObject = null;
 	let existingConnectionObjects = [];
 	let existingConnectionNames = []
 	_getExistingConnectionsFromRoseServer()
@@ -557,9 +571,15 @@ class RoseFolder {
 		//console.log(`existing names: ${existingConnectionNames.sort().join('\n')}`)
 		return this._processFolderArgumentToInitScenario(folder)
 	    })
-	    .then(fld => {
+	    .then(folderAndObject => {
+		let fld = folderAndObject.folder;
+		let folderObject = folderAndObject.folderObject;
+		existingFolderObject = folderObject;
 		if (fld) {
 		    folderParameter = fld;
+		    if (folderObject && folderObject.UUID) {
+			return Promise.resolve("I");
+		    }
 		    return Promise.resolve("C");
 		}
 		if (options.create) {
@@ -571,23 +591,26 @@ class RoseFolder {
 		if (answer === "I") {
 		    let connectionObject;
 		    let infoByUuid = this.infoByUuid;
-		    this._selectFromExisting('Select an existing scenario class',
-					     'connections',
-					     { CLASS_UUID: '$isnull' },
-					     {
-						 filter: cobj => {
-						     let uuid = cobj.UUID;
-						     let isLocal = !!cobj.ISLOCAL;
-						     if (uuid in infoByUuid) {
-							 //console.log(`already connected: scenario class ${cobj.NAME}...`);
-							 return false;
-						     }
-						     if (isLocal) {
-							 return false;
-						     }
-						     return true;
-						 }
-					     })
+		    (existingFolderObject
+		     ? Promise.resolve(existingFolderObject)
+		     : this._selectFromExisting('Select an existing scenario class',
+						'connections',
+						{ CLASS_UUID: '$isnull' },
+						{
+						    filter: cobj => {
+							let uuid = cobj.UUID;
+							let isLocal = !!cobj.ISLOCAL;
+							if (uuid in infoByUuid) {
+							    //console.log(`already connected: scenario class ${cobj.NAME}...`);
+							    return false;
+							}
+							if (isLocal) {
+							    return false;
+							}
+							return true;
+						    }
+						})
+		    )
 			.then(connObj => {
 			    if (!connObj) {
 				cliInfo('no scenario classes found that can be connected to a local folder; '
@@ -597,7 +620,11 @@ class RoseFolder {
 			    }
 			    connectionObject = connObj;
 			    let msg = 'Please enter a folder name for the code files';
-			    return this._getCleanFolderName(msg, connObj.NAME);
+			    if (folderParameter) {
+				return Promise.resolve(folderParameter);
+			    } else {
+				return this._getCleanFolderName(msg, connObj.NAME);
+			    }
 			})
 			.then(folder => {
 			    if (!folder) return Promise.resolve(null);

@@ -208,17 +208,34 @@ const isRelativeToFolder = (fname, folder = '.') => {
     return p1 !== '..';
 }
 
-const stringFormat = (str, ...args) => {
-    for (k in args) {
-	str = str.replace("{" + k + "}", args[k])
+const stringFormat = (str, insertLineBreak, indent, ...args) => {
+    let s = str;
+    if (typeof insertLineBreak === 'boolean') {
+	if (typeof indent !== 'string') {
+	    indent = '  ';
+	}
+    } else {
+	// if insertLineBreak is not a boolean, all arguments are interprested as string args
+	args = [insertLineBreak, indent, ...args];
     }
-    return str
+    for (let k in args) {
+	s = s.replace("{" + k + "}", args[k])
+    }
+    if (insertLineBreak === true) {
+	if (typeof process.stdout.columns === 'number') {
+	    let columns = process.stdout.columns;
+	    if (s.length >= columns) {
+		s = formatText(s, Math.trunc(columns * 0.8), indent, firstIndent = '');
+	    }
+	}
+    }
+    return s
 };
 
-const formatText = (text, lineLength = 80, indent = '') => {
+const formatText = (text, lineLength = 80, indent = '', firstIndent = indent) => {
     const words = text.split(/\s+/);
     const lines = [];
-    var currentLine = [indent];
+    var currentLine = [firstIndent];
     words.forEach(word => {
 	let wlen = word.length;
 	let llen = currentLine.join(" ").length;
@@ -244,7 +261,7 @@ const formatText = (text, lineLength = 80, indent = '') => {
 	    }
 	});
     }
-    const formattedText = lines.map(words => words.join(' ').trim()).join('\n');
+    const formattedText = lines.map(words => words.join(' ')).join('\n');
     return formattedText;
 }
 

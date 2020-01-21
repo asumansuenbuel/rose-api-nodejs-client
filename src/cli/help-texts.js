@@ -119,7 +119,9 @@ const messages = {
     confirmOverwriteInstanceFolder: `About to copy files into instance folder "{0}";`
 	+ ` files will be overwritten. Do you want to continue?`,
     confirmOverwriteScenarioFolder: 'Folder "{0}" exists and it not empty. If you continue, files will be'
-	+ ' overwritten in this folder. Do you want to continue?'
+	+ ' overwritten in this folder. Do you want to continue?',
+    confirmOverwriteScenarioFolderArgument: 'Folder "{0}" is already connected to RoseStudio scenario "{1}"; if you continue'
+	+ ' files from the server will be overwrite local files; local changes will be lost! Do you want to continue?'
 }
 
 
