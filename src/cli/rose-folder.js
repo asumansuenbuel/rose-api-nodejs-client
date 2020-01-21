@@ -129,7 +129,21 @@ class RoseFolder {
 		    if (fs.lstatSync(folder).isDirectory()) {
 			let filesInFolder = fs.readdirSync(folder);
 			if (filesInFolder.length > 0) {
-			    throw `directory "${folder}" exists and is not empty.`;
+			    folderExists = true;
+			    //throw `directory "${folder}" exists and is not empty.`;
+			    let type = 'confirm',
+				name = 'ok',
+				message = stringFormat(messages.confirmOverwriteScenarioFolder, folder);
+			    let question = { type, name, message };
+			    return inquirer
+				.prompt(question)
+				.then(({ ok }) => {
+				    if (ok) {
+					//console.log(`continuing...`);
+					return folder;
+				    }
+				    throw "operation aborted.";
+				})
 			}
 			folderExists = true;
 		    } else {
@@ -942,8 +956,12 @@ class RoseFolder {
 	const defaultValue = instanceName;
 	return this._getCleanFolderName(message, defaultValue)
 	    .then(folder => {
-		//console.log(`instance folder: ${folder}`)
-		this._writeFolderInfo(folder, false, object);
+		if (folder) {
+		    //console.log(`instance folder: ${folder}`)
+		    this._writeFolderInfo(folder, false, object);
+		} else {
+		    throw "can't continue"
+		}
 		return folder;
 	    })
 	    .catch(err => cliError(err))

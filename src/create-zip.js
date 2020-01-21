@@ -164,7 +164,8 @@ class ZipFile {
 			}
 			fs.mkdir(dest, { recursive: true }, err => {
 			    if (err) {
-				return reject(err);
+				console.error(err);
+				//return reject(err);
 			    }
 			    debug && console.log(inmagenta(`folder created: ${dest}`))
 			    return resolve(dest);

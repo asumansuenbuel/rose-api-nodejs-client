@@ -115,9 +115,11 @@ const help = {
 
 const messages = {
     confirmWipeInstanceFolder: `About to copy files into instance folder "{0}";`
-	+` all current content will be wiped out. Do you want to continue?`,
+	+ ` all current content will be wiped out. Do you want to continue?`,
     confirmOverwriteInstanceFolder: `About to copy files into instance folder "{0}";`
-	+` files will be overwritten. Do you want to continue?`
+	+ ` files will be overwritten. Do you want to continue?`,
+    confirmOverwriteScenarioFolder: 'Folder "{0}" exists and it not empty. If you continue, files will be'
+	+ ' overwritten in this folder. Do you want to continue?'
 }
 
 
