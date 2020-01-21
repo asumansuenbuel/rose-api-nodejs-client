@@ -191,14 +191,25 @@ program
     .description(help.commands.info)
 
 /**
-
-interactively initialize a local sub-folder with a RoseStudio scenario
-class. If the folder argument is specified, it has to
-be a folder that is not yet connected to any Rose artifact. In this
-case, a new scenario class is created in RoseStudio and will be
-assicated with the folder. All required information is requested
-interactively.
-
+ *
+ * initialize a local sub-folder with a RoseStudio scenario class
+ * (interactively). If the folder argument is specified, it can be
+ * either a folder that is not yet connected to any Rose scenario, or
+ * one that is connected to a Rose scenario _class_. 
+ *
+ *
+ * 1) If "folder" argument is given and the folder is not connected to
+ *   any Rose scenario, a new scenario _class_ is created in
+ *   RoseStudio and will be assicated with the folder;
+ *
+ * 2) If "folder" argument is given and the folder is connected to a
+ *   Rose scenario _class_, the folder contents will be updated with
+ *   contents downloaded from the server (after confirmation).
+ *
+ * 3) If "folder" argument is given and the folder is connection to a
+ *    Rose scenario _instance_, an error is shown. If you want to
+ *    update the contents of the scenario _instance_ folder, you can
+ *    use the "update" command.
  *
  * #### Usage
  * `rose init-scenario [options] [folder]`
@@ -302,6 +313,14 @@ program
     .option('-n, --no-update', help.commandOptions.editConfig.noUpdate)
     .action(commands.edit)
     .description(help.commands.editConfig)
+
+/**
+ * to be written
+ */
+program
+    .command('placeholder <scenario-folder>')
+    .action(commands.getPlaceholderInfo)
+    .description(help.commands.placeholder)
 
 /**
  * uploads the contents of the scenario-class-folder as code template

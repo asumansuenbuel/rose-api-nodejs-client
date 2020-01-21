@@ -8,7 +8,8 @@ const fs = require('fs');
 const path = require('path');
 
 const { cliInfo, cliError, cliWarn, cliStartProgress, cliStopProgress,
-	editFile, editString, stringIsUuid, openUrlInBrowser } = require('./cli-utils');
+	editFile, editString, stringIsUuid, openUrlInBrowser,
+	stringFormat, formatText } = require('./cli-utils');
 const { authenticatedRose } = require('./cli-auth');
 const { RoseFolder } = require('./rose-folder');
 
@@ -423,6 +424,39 @@ class Commands {
 	} else {
 	    this.rose.findOneConnection({ NAME: { "$like": name } }, _doEdit);
 	}
+    }
+
+    cli_getPlaceholderInfo(folder, options = {}) {
+	const rfolder = new RoseFolder(this.rose);
+	rfolder.getPlaceholderInfo(folder, options)
+	    .then(({ UUID, NAME, CLASS_UUID, placeholderObjects }) => {
+		if (placeholderObjects.length === 0) {
+		    cliInfo(`scenario "${NAME}" doesn't have any placeholders`);
+		    return;
+		}
+		const isInstance = !!CLASS_UUID;
+		let head = ['Placeholder Id', 'Description', 'Entity'];
+		if (isInstance) {
+		    head.push('Instantiated With');
+		}
+		const table = new Table({ head, chars: _plainChars });
+		placeholderObjects.forEach(pobj => {
+		    let { id, TABLE, description, instantiatedObject } = pobj;
+		    description = formatText(description, 40, '', '');
+		    let entity = TABLE.toLowerCase();
+		    let row = [id, description, entity];
+		    if (isInstance) {
+			let instantiatedInfo = '';
+			if (typeof instantiatedObject === 'object') {
+			    let { UUID, NAME } = instantiatedObject;
+			    instantiatedInfo = `${NAME} (${UUID})`;
+			}
+			row.push(instantiatedInfo);
+		    }
+		    table.push(row);
+		});
+		cliInfo(table.toString());
+	    })
     }
 
 }

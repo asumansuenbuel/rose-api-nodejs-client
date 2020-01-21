@@ -235,13 +235,13 @@ const stringFormat = (str, insertLineBreak, indent, ...args) => {
 const formatText = (text, lineLength = 80, indent = '', firstIndent = indent) => {
     const words = text.split(/\s+/);
     const lines = [];
-    var currentLine = [firstIndent];
+    var currentLine = firstIndent.length > 0 ? [firstIndent] : [];
     words.forEach(word => {
 	let wlen = word.length;
 	let llen = currentLine.join(" ").length;
 	if (llen + wlen > lineLength) {
 	    lines.push(currentLine);
-	    currentLine = [indent];
+	    currentLine = indent.length > 0 ? [indent] : [];
 	}
 	currentLine.push(word);
     });

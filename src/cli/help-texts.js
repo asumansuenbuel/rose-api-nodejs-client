@@ -22,15 +22,16 @@ const help = {
 	    + " must uniquely describe a scenario class.",
 	user: "shows info about the user currently authenticated for the Rose command"
 	    + " line interface",
-	initScenario: bold("[interactive]") + " initialize a local sub-folder with a RoseStudio scenario class (interactively)."
-	    + " If the folder argument is specified, it has to be a folder that is not yet connected"
-	    + " to any Rose artifact. In this case, a new scenario class is created in RoseStudio"
-	    + " and will be assicated with the folder. All required information is requested"
-	    + " interactively.",
+	initScenario: bold("[interactive]") + " initialize a local sub-folder with a RoseStudio"
+	    + " scenario class (interactively). If the folder argument is specified, it can be"
+	    + " either a folder that is not yet connected to any Rose scenario, or one that is"
+	    + " connected to a Rose scenario class. In the first case, a new scenario class is"
+	    + " created in RoseStudio and will be assicated with the folder; in the latter case,"
+	    + " the folder will be updated with contents downloaded from the server (after confirmation).",
 	createScenario: bold("[interactive]") + " same as \"init-scenario --create ...\"",
-	initInstance: bold("[interactive]") + " initialize a local sub-folder with a RoseStudio scenario instance (interactively);"
-	    + " the scenario-class-folder parameter must refer to a local folder that has"
-	    + " been initialized using the \"init-scenario\" command.",
+	initInstance: bold("[interactive]") + " initialize a local sub-folder with a RoseStudio"
+	    + " scenario instance (interactively); the scenario-class-folder parameter must refer"
+	    + " to a local folder that has been initialized using the \"init-scenario\" command.",
 	createInstance: bold("[interactive]") + " same as \"init-instance --create ...\"",
 	updateInstance: "runs code generation on the rose server and downloads the code to the folder"
 	    + " which must be one that is connected to a scenario instance."
@@ -42,6 +43,7 @@ const help = {
 	    + " only information related to that folder is shown",
 	editConfig: "command to edit config of the class or an instance that is associated"
 	    + " with the given folder.",
+	placeholder: "to be written...",
 	updateScenario: "uploads the contents of the scenario-class-folder as code template to the"
 	    + " associated RoseStudio scenario class. The folder must have been associated with the"
 	    + " scenario class using \"rose init-scenario\" command. Note, that all code content"
@@ -91,7 +93,8 @@ const help = {
 		+ " connected instances of the scenario class.",
 	    skipConfirm: "Only used when `--all` is given; option is then used while updating the"
 		+ " connected instances of the scenario class.",
-	    instancesOnly: "Only updates the instances of the scenario class; the scenario class itself is not updated on the Rose server.",
+	    instancesOnly: "Only updates the instances of the scenario class; the scenario class"
+		+ " itself is not updated on the Rose server.",
 	    force: "By default, only files that have changed since last upload are being uploaded;"
 		+ " using this option forces that all relevant files from the scenario class folder"
 		+ " are uploaded to the Rose server."
@@ -123,7 +126,10 @@ const messages = {
     confirmOverwriteScenarioFolderArgument: 'Folder "{0}" is already connected to RoseStudio scenario "{1}"; if you continue'
 	+ ' files from the server will be overwrite local files; local changes will be lost! Do you want to continue?',
     errorFolderConnectedToInstance: 'Folder "{0}" is connected to a RoseStudio instance "{1}"; you can only specify'
-	+ ' unconnected folders here or folders that are connected to scenario classes.'
+	+ ' unconnected folders here or folders that are connected to scenario classes.',
+    selectFolderForInitScenario: "Please select the root folder that contains your source code (template);"
+	+ " if you want to create a new folder, interrupt this operation (Ctr-C) and call \"init-scenario\""
+	+ " with the folder name as argument (or \"mkdir\" the folder so that it appears in this list...)"
 }
 
 

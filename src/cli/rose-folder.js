@@ -180,7 +180,7 @@ class RoseFolder {
 	//cliWarn(`processing folder argument ${folder}...`)
 	if (!folder) {
 	    // no folder argument passed to init-scenario
-	    return Promise.resolve(null);
+	    return Promise.resolve({});
 	}
 	const _process = () => {
 	    const finfo = this.getFolderInfo(folder);
@@ -670,8 +670,7 @@ class RoseFolder {
 		    let localFolder;
 		    (folderParameter
 		     ? Promise.resolve(folderParameter)
-		     : this._selectExistingFolder('Please select the root folder that contains '
-						+ 'your source code (template)'))
+		     : this._selectExistingFolder(stringFormat(messages.selectFolderForInitScenario, true, '  ')))
 			.then(folder => {
 			//console.log(`local folder: ${folder}`);
 			localFolder = folder;
@@ -1248,7 +1247,7 @@ class RoseFolder {
     updateScenarioOrInstance(folder, options) {
 	const finfo = this.getFolderInfo(folder);
 	const errmsgNoInfo = `no rose information found for "${folder}"; `
-	      + 'please specify a folder that is connected to a RoseStudio scenario instance.';
+	      + 'please specify a folder that is connected to a RoseStudio scenario.';
 	if (!finfo) {
 	    return cliError(errmsgNoInfo);
 	}
@@ -1262,6 +1261,36 @@ class RoseFolder {
 	} else {
 	    return this.updateScenarioFolder(folder, options);
 	}
+    }
+
+    // ----------------------------------------------------------------------
+
+    getPlaceholderInfo(folder, options) {
+	const finfo = this.getFolderInfo(folder);
+	const errmsgNoInfo = `no rose information found for "${folder}"; `
+	      + 'please specify a folder that is connected to a RoseStudio scenario.';
+	if (!finfo) {
+	    return cliError(errmsgNoInfo);
+	}
+	if (!finfo.object && !finfo.object.UUID) {
+	    return cliError(errmsgNoInfo);
+	}
+	const { UUID, NAME, CLASS_UUID } = finfo.object;
+	return new Promise((resolve, reject) => {
+	    this.rose.getConnectionPlaceholderInfo(UUID, (err, placeholdersMap) => {
+		if (err) {
+		    return reject(err);
+		}
+		const placeholderObjects = [];
+		if (typeof placeholdersMap === 'object') {
+		    Object.keys(placeholdersMap).forEach(table => {
+			let plist = placeholdersMap[table];
+			placeholderObjects.push(...plist);
+		    });
+		}
+		resolve({ UUID, NAME, CLASS_UUID, placeholderObjects });
+	    });
+	})
     }
 
 }
