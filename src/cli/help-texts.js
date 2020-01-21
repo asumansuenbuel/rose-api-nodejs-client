@@ -121,7 +121,9 @@ const messages = {
     confirmOverwriteScenarioFolder: 'Folder "{0}" exists and it not empty. If you continue, files will be'
 	+ ' overwritten in this folder. Do you want to continue?',
     confirmOverwriteScenarioFolderArgument: 'Folder "{0}" is already connected to RoseStudio scenario "{1}"; if you continue'
-	+ ' files from the server will be overwrite local files; local changes will be lost! Do you want to continue?'
+	+ ' files from the server will be overwrite local files; local changes will be lost! Do you want to continue?',
+    errorFolderConnectedToInstance: 'Folder "{0}" is connected to a RoseStudio instance "{1}"; you can only specify'
+	+ ' unconnected folders here or folders that are connected to scenario classes.'
 }
 
 

@@ -185,8 +185,10 @@ class RoseFolder {
 	const _process = () => {
 	    const finfo = this.getFolderInfo(folder);
 	    if (finfo && finfo.object) {
-		//let msg = `Folder "${folder}" is already connected to a RoseStudio scenario.`;
-		//return Promise.reject(msg);
+		if (!finfo.isClass) {
+		    let msg = stringFormat(messages.errorFolderConnectedToInstance, folder, finfo.object.NAME);
+		    return Promise.reject(msg);
+		}
 		let type = 'confirm',
 		    name = 'ok',
 		    message = stringFormat(messages.confirmOverwriteScenarioFolderArgument, true, '  ', folder, finfo.object.NAME);
