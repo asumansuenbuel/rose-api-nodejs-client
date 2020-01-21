@@ -87,6 +87,7 @@ class ZipFile {
 	    if (filename.endsWith('~')) return false;
 	    return true;
 	});
+	//console.log(`files in folder ${folder}: ${files.join(' ')}`)
 	files.forEach(filename => {
 	    const filepath = join(folder, filename);
 	    if (lstatSync(filepath).isDirectory()) {
@@ -188,6 +189,7 @@ class ZipFile {
 			}
 			let { unixPermissions } = zfile;
 			let options = { mode: unixPermissions };
+			//console.log(`permissions ${options.mode} for ${filename}`)
 			fs.writeFile(dest, content, options, err => {
 			    if (err) {
 				return reject(err);

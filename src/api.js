@@ -35,7 +35,7 @@
 const { OAuth2Client } = require('google-auth-library');
 const request = require('request');
 
-const { Server, Auth, Settings } = require('./config');
+const { Server, Auth, Settings, CLI } = require('./config');
 const ZipFile = require('./create-zip');
 
 const { fileContainsPreprocessorSyntax, mergeOnto } = require('./server_utils');
@@ -1443,6 +1443,9 @@ class RoseAPI {
 		return _needsUpload(fpath);
 		//return TRUE;
 	    }
+	    if (path.join(sourceFolder, CLI.RoseInstallFilename) === fpath) {
+		return _needsUpload(fpath);
+	    }
 	    return FALSE;
 	};
     }
@@ -1469,7 +1472,7 @@ class RoseAPI {
 	const cb = (typeof optionsOrCallback === 'function')
 	      ? optionsOrCallback : ensureFunction(callback);
 	const options = (typeof optionsOrCallback === 'object') ? optionsOrCallback : {};
-	const { dryRun, debug, lastUploadTimestamp } = options;
+	const { dryRun, debug, lastUploadTimestamp, force } = options;
 	//if (typeof lastUploadTimestamp === 'number') {
 	//    console.log(`found lastUploadTimestamp in uploadCodeTemplate options: ${lastUploadTimestamp}`);
 	//}
@@ -1492,18 +1495,6 @@ class RoseAPI {
 	const _doUpload = isLocal => {
 	    const zip = new ZipFile();
 	    if (isLocal) {
-		/*
-		options.whitelistFileFilterFunction = fpath => {
-		    if (fileContainsPreprocessorSyntax(fpath)) {
-			return true;
-		    }
-		    let { join } = require('path');
-		    if (join(sourceFolder, 'README.md') === fpath) {
-			return true;
-		    }
-		    return false;
-		};
-		*/
 		options.whitelistFileFilterFunction =
 		    this._getWhitelistFunction(sourceFolder, false, lastUploadTimestamp);
 		options.debug = false;
@@ -1518,7 +1509,7 @@ class RoseAPI {
 	    if (filesAdded.length === 0) {
 		return cb(null, []);
 	    }
-	    const url = `binary/zip/${uuid}`;
+	    const url = `binary/zip/${uuid}?force=${!!force}`;
 	    const getReadStream = () => {
 		this.debug && console.log('(re)creating zip read stream for request...');
 		return zip.getReadStream();

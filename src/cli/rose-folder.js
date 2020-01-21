@@ -11,14 +11,18 @@ const inquirer = require('inquirer');
 const { cliInfo, cliWarn, cliError, getUniqueNameListAndHash,
 	findAllFiles, stringIsUuid, allFilenamesInFolder,
 	cliStartProgress, cliStopProgress, isValidFilename,
-	isRelativeToFolder, stringFormat } = require('./cli-utils');
+	isRelativeToFolder, stringFormat, runSystemCommand } = require('./cli-utils');
 const { mkdirRecursiveSync } = require('../server_utils');
 
 const { messages } = require('./help-texts');
 
 const { blue, red, green, yellow, bold, dim } = require('chalk');
 
-const roseInitFilename = '.rose';
+const { CLI } = require('../config');
+
+const roseInitFilename = CLI.RoseInitFilename;
+
+const roseInstallScriptFilename = CLI.RoseInstallFilename;
 
 class RoseFolder {
 
@@ -44,6 +48,10 @@ class RoseFolder {
 
     getInitFileInFolder(folder) {
 	return path.join(folder, roseInitFilename);
+    }
+
+    getInstallScriptInFolder(folder) {
+	return path.join(folder, roseInstallScriptFilename);
     }
 
     get info() {
@@ -1011,8 +1019,8 @@ class RoseFolder {
 	const ptimer = cliStartProgress();
 	return new Promise((resolve, reject) => {
 	    let { lastUploadTimestamp } = finfo;
-	    if (options.force) console.log(blue(`  - OPTION FORCE DETECTED`));
-	    let uploadOptions = options.force ? {} : { lastUploadTimestamp };
+	    //if (options.force) console.log(blue(`  - OPTION FORCE DETECTED`));
+	    let uploadOptions = options.force ? { force: options.force } : { lastUploadTimestamp };
 	    this.rose.uploadCodeTemplate(uuid, folder, uploadOptions, (err, filesAdded) => {
 		cliStopProgress(ptimer);
 		if (err) {
@@ -1158,12 +1166,36 @@ class RoseFolder {
 				return reject(err);
 			    }
 			    cliInfo('done.');
+			    this._checkRunInstallScript(folder);
 			    resolve(true);
 			});
 		    })
 		}
 	    })
 	    .catch(cliError)
+    }
+
+    /**
+     * checks whether there is a .rose_install and executable file in the folder.
+     * If yes, execute it.
+     */
+    _checkRunInstallScript(folder) {
+	const finfo = this.getFolderInfo(folder);
+	if (!finfo && !finfo.object) {
+	    return;
+	}
+	const { UUID } = finfo.object.UUID;
+	const installScript = this.getInstallScriptInFolder(folder);
+	fs.access(installScript, fs.constants.X_OK, err => {
+	    if (err) {
+		//console.log(blue(`  - no executable "${roseInstallScriptFilename}" found in "${folder}"`));
+		return;
+	    }
+	    let cmd = `echo "  executing install script in folder \"${folder}\"..."\n`
+		+ `cd "${folder}" &&  exec "${path.resolve(installScript)}"\n`;
+	    let cmdId = `install-${UUID}`
+	    runSystemCommand(cmd, { cmdId });
+	});
     }
 
     updateScenarioOrInstance(folder, options) {

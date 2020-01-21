@@ -19,6 +19,11 @@ const config = {
 	GoogleClientSecret: 'R2jxev6hbiSkgHbij8Uq3VUJ',
 	CallbackUrl: '/api/auth/google/callback',
 	GetUserInfoUrl: 'https://www.googleapis.com/oauth2/v1/userinfo?alt=json'
+    },
+
+    CLI: {
+	RoseInitFilename: '.rose',
+	RoseInstallFilename: '.rose_install'
     }
 }
 
