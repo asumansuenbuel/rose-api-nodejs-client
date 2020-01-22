@@ -1502,6 +1502,7 @@ class RoseAPI {
 	    let filesAdded = [];
 	    try {
 		options.filesAdded = filesAdded;
+		options.debug = false;
 		zip.addFolderRecursively(sourceFolder, sourceFolder, options);
 	    } catch (err) {
 		return cb(err);
@@ -1518,6 +1519,13 @@ class RoseAPI {
 		cb(null, 'dryRun, nothing uploaded.');
 		return;
 	    }
+	    console.log(`creating local zip-file for debugging...`);
+	    zip.createFile('/tmp/zip-created-in-api.zip', err => {
+		if (err) {
+		    return console.error(err);
+		}
+		console.log('local zip file created succesfully.');
+	    })
 	    this._apiCallUploadBinary(url, getReadStream, (err, res) => {
 		if (err) {
 		    console.error(`ERROR: ${err}`)

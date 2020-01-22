@@ -22,7 +22,7 @@ class ZipFile {
      * @param {string} path the path of the original file
      * @param {string} name the name (path) of the file in the zip file
      */
-    addFile(path, name) {
+    addFile(path, name, debug) {
 	if (!existsSync(path)) {
 	    console.error(`create-zip: ignoring non-existing file "${path}"...`)
 	    return
@@ -37,8 +37,8 @@ class ZipFile {
 	    return stats.mode
 	}
 	let unixPermissions = _getUnixFilePermission(path)
-	//console.log(`create-zip: adding file "${ingreen(path)}" `
-	//	    + `(mode ${unixPermissions}) to zip file as "${ingreen(name)}"...`)
+	debug && console.log(`create-zip: adding file "${ingreen(path)}" `
+			     + `(mode ${unixPermissions}) to zip file as "${ingreen(name)}"...`)
 	let data = readFileSync(path)
 	this.zip.file(name, data, { unixPermissions } )
     }
@@ -113,7 +113,7 @@ class ZipFile {
 	    const name = relative(rootFolder, filepath);
 	    debug && console.log(`${indent}adding to zip: file: "${filepath}", name: "${ingreen(name)}"`);
 	    if (!dryRun) {
-		this.addFile(filepath, name);
+		this.addFile(filepath, name, debug);
 	    }
 	});
 	debug && console.log(`${indent}done addFolderRecursively("${folder}", rootFolder="${rootFolder}")...`);
@@ -121,12 +121,12 @@ class ZipFile {
     }
 
     getReadStream() {
-	return this.zip.generateNodeStream({ streamFiles: true });
+	return this.zip.generateNodeStream({ streamFiles: true, platform: process.platform });
     }
 
     createFile(fileName, callback) {
 	this.zip
-	    .generateNodeStream({streamFiles:true})
+	    .generateNodeStream({ streamFiles: true, platform: process.platform })
 	    .pipe(createWriteStream(fileName))
 	    .on('finish', function () {
 		console.log(`${fileName} written.`);
