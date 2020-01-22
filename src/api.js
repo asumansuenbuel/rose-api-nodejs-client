@@ -153,7 +153,8 @@ class RoseAPI {
 
 	const checkResult = res => {
 	    if (res.statusCode !== 200) {
-		cb(res.body);
+		let { body } = res;
+		cb(body + '');
 	    } else {
 		cb(null, res.body);
 	    }
@@ -1384,7 +1385,7 @@ class RoseAPI {
 		    return cb(err);
 		}
 	    } else {
-		getCodeFromServer(true);
+		getCodeFromServer(clearFolder);
 	    }
 	});
     };
@@ -1519,13 +1520,6 @@ class RoseAPI {
 		cb(null, 'dryRun, nothing uploaded.');
 		return;
 	    }
-	    console.log(`creating local zip-file for debugging...`);
-	    zip.createFile('/tmp/zip-created-in-api.zip', err => {
-		if (err) {
-		    return console.error(err);
-		}
-		console.log('local zip file created succesfully.');
-	    })
 	    this._apiCallUploadBinary(url, getReadStream, (err, res) => {
 		if (err) {
 		    console.error(`ERROR: ${err}`)

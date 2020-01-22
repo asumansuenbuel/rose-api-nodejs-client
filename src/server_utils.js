@@ -194,7 +194,8 @@ const removeFolderRecursively = (path, options) => {
 	let filePath = join(path, filename);
 	if (lstatSync(filePath).isDirectory()) {
 	    const removeFolderItself = true;
-	    return removeFolderRecursively(filePath, { removeFolderItself, dryRun });
+	    debug && console.log(`calling removeFolderRecursively on ${filePath}...`);
+	    return removeFolderRecursively(filePath, { removeFolderItself, dryRun, debug, deleteFilter });
 	} else {
 	    let p = () => new Promise((resolve, reject) => {
 		if (dryRun) {
